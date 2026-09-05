@@ -1,0 +1,10 @@
+# Configuration fail2ban — jail locale pour le service SSH.
+# Bannissement après plusieurs échecs de connexion SSH.
+[DEFAULT]
+bantime  = {{ fail2ban_bantime }}
+findtime = {{ fail2ban_findtime }}
+maxretry = {{ fail2ban_maxretry }}
+
+[sshd]
+enabled  = true
+port     = ssh

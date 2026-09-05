@@ -1,0 +1,5 @@
+---
+- name: Redémarrer Loki
+  ansible.builtin.command:
+    cmd: docker compose -f /opt/loki/docker-compose.yml restart loki
+  changed_when: true

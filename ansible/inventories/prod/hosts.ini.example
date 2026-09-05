@@ -1,0 +1,13 @@
+# =====================================================================
+# Inventaire PROD — fichier d'exemple.
+#
+#   1) AWS  : généré automatiquement par `make inventory ENV=prod`.
+#   2) VPS  : copier en hosts.ini et renseigner les IP (ex: Contabo).
+#
+# Variables d'hôte attendues : public_ip, private_ip, server_name.
+# =====================================================================
+[prod]
+prod ansible_host=203.0.113.20 public_ip=203.0.113.20 private_ip=203.0.113.20 server_name=prod-server
+
+[all:vars]
+ansible_user=ubuntu

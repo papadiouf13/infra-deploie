@@ -1,0 +1,151 @@
+---
+# =====================================================================
+# group_vars/all.yml — variables communes à TOUS les environnements.
+#
+# Les variables sensibles (mots de passe, tokens, webhooks) sont dans
+# group_vars/vault.yml (fichier chiffré ansible-vault, NON commité ;
+# un exemple est fourni : vault.yml.example).
+# Les valeurs spécifiques par environnement sont dans group_vars/dev.yml
+# et group_vars/prod.yml.
+# =====================================================================
+
+# ---- Identité ----
+# environment_name est dérivé du groupe d'inventaire (dev ou prod).
+environment_name: "{{ group_names[0] }}"
+# server_name est une variable d'hôte définie dans l'inventaire (dev-server, prod-server).
+
+# ---- Utilisateur / connexion SSH ----
+ansible_user: ubuntu
+ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+ansible_ssh_private_key_file: "~/.ssh/monitoring-key.pem"
+ansible_python_interpreter: /usr/bin/python3
+
+# ---- Admin ----
+# CIDR autorisés sur les interfaces protégées par ipAllowList
+# (Prometheus, dashboard Traefik). Restreindre impérativement en production.
+admin_cidr:
+  - "0.0.0.0/0"
+admin_email: "admin@example.com"
+
+# ---- Hostnames (nip.io par défaut : aucune configuration DNS) ----
+# L'IP publique est une variable d'hôte (public_ip) fournie par l'inventaire.
+# Pour utiliser un vrai domaine, redéfinir ces variables dans group_vars/<env>.yml
+# (ex : grafana_host: "grafana.example.com").
+grafana_host: "grafana.{{ public_ip }}.nip.io"
+prometheus_host: "prometheus.{{ public_ip }}.nip.io"
+traefik_host: "traefik.{{ public_ip }}.nip.io"
+sonar_host: "sonar.{{ public_ip }}.nip.io"
+whoami_host: "whoami.{{ public_ip }}.nip.io"
+
+# ---- TLS / ACME ----
+# traefik_cert_type : "letsencrypt" (par défaut) ou "selfsigned".
+# acme_is_staging : true en dev pour éviter les rate-limits Let's Encrypt.
+traefik_cert_type: letsencrypt
+acme_is_staging: false
+# Les hash bcrypt des middlewares basic-auth (Prometheus/Traefik) sont
+# PRECALCULES (scripts/gen-bcrypt-hash.sh) et stockés dans le vault :
+# aucune dépendance passlib/bcrypt côté contrôleur à l'exécution.
+
+# ---- Réseaux Docker (created par le rôle docker) ----
+# Subnets fixes : utilisés aussi pour les règles UFW (accès aux métriques
+# du daemon Docker 9323 depuis les réseaux monitoring/proxy).
+docker_networks:
+  proxy:
+    name: proxy
+    subnet: "172.30.0.0/24"
+    gateway: "172.30.0.1"
+  monitoring:
+    name: monitoring
+    subnet: "172.30.1.0/24"
+    gateway: "172.30.1.1"
+
+# ---- Versions des images (épinglées ; ajustables) ----
+images:
+  traefik: "traefik:v3.5.5"
+  node_exporter: "prom/node-exporter:v1.8.2"
+  cadvisor: "gcr.io/cadvisor/cadvisor:v0.49.1"
+  prometheus: "prom/prometheus:v2.54.1"
+  loki: "grafana/loki:3.2.2"
+  alloy: "grafana/alloy:v1.3.1"
+  grafana: "grafana/grafana:11.2.2"
+  whoami: "traefik/whoami:v1.10.1"
+  sonarqube: "sonarqube:lts-community"
+  postgres: "postgres:16-alpine"
+
+# ---- Alerting : SEUILS (configurables) ----
+alerts:
+  server:
+    unreachable_for: "2m"
+    cpu_warning: 80
+    cpu_critical: 90
+    cpu_for: "10m"
+    ram_warning: 80
+    ram_critical: 90
+    ram_for: "10m"
+    disk_warning: 80
+    disk_critical: 90
+    disk_for: "10m"
+    disk_full_prediction_hours: 24
+    reboot_window: "5m"
+  docker:
+    container_stopped_after: "60s"
+    restart_threshold: 3            # restarts détectés sur la fenêtre
+    restart_window: "15m"
+    cpu_limit_pct: 90               # consommation conteneur vs limite
+    mem_limit_pct: 90
+    oom_mem_limit_pct: 95
+  monitoring:
+    target_down_for: "2m"
+  traefik:
+    error_5xx_pct: 5                # taux d'erreurs 5xx
+    latency_p95_seconds: 1          # latence p95 en secondes
+    cert_expiry_days: 14            # alerte avant expiration du certificat
+
+# ---- Contact points (Grafana Alerting) ----
+# Les identifiants/tokens sont dans group_vars/vault.yml.
+alerting:
+  email:
+    enabled: true
+    to: "admin@example.com"
+    smtp_host: "smtp.example.com"
+    smtp_port: 465
+    smtp_from: "monitoring@example.com"
+    smtp_from_name: "Infra Monitoring"
+    smtp_user: ""
+    smtp_password: ""
+    smtp_starttls: false
+  telegram:
+    enabled: true
+    bot_token: ""
+    chat_id: ""
+  slack:
+    enabled: true
+    webhook_url: ""
+  discord:
+    enabled: false
+    webhook_url: ""
+
+# ---- Rétention des métriques / logs (par défaut ; redéfini par env) ----
+monitoring_retention_days: 15
+loki_retention_hours: 168           # 7 j par défaut
+
+# ---- SonarQube (lourd : activé par défaut uniquement en prod) ----
+enable_sonarqube: false
+sonarqube_mem_limit: "2g"
+sonarqube_cpu_limit: 1.5
+
+# ---- DuckDNS : mise à jour automatique (optionnel, vide = désactivé) ----
+# duckdns_token et duckdns_domains (ex: "tioukh,grafana-tioukh") → cron périodique.
+duckdns_token: ""
+duckdns_domains: ""
+
+# ---- Sondes de healthcheck "fréquences" ----
+monitoring_scrape_interval: 15s
+
+# ---- Dashboards provisionnés dans Grafana (fichiers sous roles/grafana/templates/dashboards) ----
+grafana_dashboards:
+  - overview
+  - infrastructure
+  - docker
+  - traefik
+  - logs

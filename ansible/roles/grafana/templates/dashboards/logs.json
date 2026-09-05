@@ -1,0 +1,83 @@
+{
+  "uid": "infra-logs",
+  "title": "Journaux (Loki)",
+  "description": "Exploration des journaux centralisés (Loki)",
+  "tags": ["logs", "loki", "monitoring"],
+  "timezone": "utc",
+  "editable": true,
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "env",
+        "label": "Environnement",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": { "query": "label_values(up, environment)", "refId": "A" },
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "sort": 1,
+        "hide": 0,
+        "current": { "text": "All", "value": "$__all" }
+      },
+      {
+        "name": "server",
+        "label": "Serveur",
+        "type": "query",
+        "datasource": { "type": "loki", "uid": "loki" },
+        "query": { "query": "label_values(server)", "refId": "A" },
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "sort": 1,
+        "hide": 0,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 41,
+      "type": "logs",
+      "title": "Flux de journaux",
+      "gridPos": { "h": 16, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "expr": "{environment=~\"$env\", server=~\"$server\"} | logfmt",
+          "legendFormat": "",
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "maxLines": 500
+        }
+      ],
+      "options": { "showTime": true, "sortOrder": "Descending", "enableLogDetails": true, "prettifyLogMessage": true, "showCommonLabels": false, "wrapLogMessage": true, "dedupStrategy": "none", "tail": false }
+    },
+    {
+      "id": 42,
+      "type": "timeseries",
+      "title": "Lignes par niveau (loki.process ou niveau)",
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 16 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "refId": "A",
+          "expr": "sum by (level) (count_over_time({environment=~\"$env\", server=~\"$server\"} | logfmt [1m]))",
+          "legendFormat": "{{ level }}",
+          "queryType": "range",
+          "supportingQueryType": "LogsVolume"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 1, "stacking": { "mode": "none" }, "showPoints": "never" } }, "overrides": [] },
+      "interval": "1m"
+    }
+  ]
+}

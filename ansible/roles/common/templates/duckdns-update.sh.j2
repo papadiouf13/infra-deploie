@@ -1,0 +1,10 @@
+#!/bin/bash
+# Mise à jour DuckDNS : pointe les sous-domaines configurés vers l'IP
+# publique actuelle de la machine. Variables : duckdns_token / duckdns_domains.
+set -euo pipefail
+
+DOMAINS="{{ duckdns_domains }}"
+TOKEN="{{ duckdns_token }}"
+URL="https://www.duckdns.org/update?domains=${DOMAINS}&token=${TOKEN}"
+
+curl -fsS --connect-timeout 5 --max-time 15 "${URL}"

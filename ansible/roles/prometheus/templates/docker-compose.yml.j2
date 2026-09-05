@@ -1,0 +1,45 @@
+# =====================================================================
+# Prometheus — réseaux proxy (Traefik) + monitoring (scraping interne).
+# Aucun port publié sur l'hôte : la console passe uniquement par Traefik.
+# =====================================================================
+services:
+  prometheus:
+    image: "{{ images.prometheus }}"
+    container_name: prometheus
+    restart: unless-stopped
+    user: "{{ prometheus_uid }}:{{ prometheus_uid }}"
+    networks:
+      - proxy
+      - monitoring
+    expose:
+      - "9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./data:/prometheus
+      # Socket Docker en lecture seule : nécessaire au docker_sd_configs.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time={{ prometheus_retention }}
+      - --web.external-url=https://{{ prometheus_host }}
+      - --web.route-prefix=/
+      - --log.level=info
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=Host(`{{ prometheus_host }}`)"
+      - "traefik.http.routers.prometheus.entrypoints=websecure"
+      - "traefik.http.routers.prometheus.service=prometheus"
+      - "traefik.http.routers.prometheus.middlewares=basic-auth-prom,allowlist-admin"
+{% if traefik_cert_type == 'letsencrypt' %}
+      - "traefik.http.routers.prometheus.tls.certresolver=letsencrypt"
+{% endif %}
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+
+networks:
+  proxy:
+    external: true
+  monitoring:
+    external: true

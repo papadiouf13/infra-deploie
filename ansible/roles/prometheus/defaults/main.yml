@@ -1,0 +1,4 @@
+---
+# Valeurs par défaut du rôle prometheus.
+prometheus_uid: 65534
+prometheus_retention: "{{ monitoring_retention_days }}d"

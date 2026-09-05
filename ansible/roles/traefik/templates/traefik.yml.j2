@@ -1,0 +1,68 @@
+# =====================================================================
+# Configuration STATIQUE de Traefik — générée par Ansible (idempotente).
+# Les middlewares réutilisables sont dans dynamic.yml.
+# =====================================================================
+
+api:
+  dashboard: true
+  debug: false
+
+# Sondepour healthcheck interne de Traefik.
+ping: true
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+  websecure:
+    address: ":443"
+  # API / dashboard interne (port non publié sur l'hôte).
+  traefik:
+    address: ":8080"
+  # Métriques Prometheus de Traefik (port non publié, scraping interne).
+  metrics:
+    address: ":8082"
+
+metrics:
+  prometheus:
+    entryPoint: metrics
+    addEntryPointsLabels: true
+    addServicesLabels: true
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: proxy
+    watch: true
+  file:
+    filename: /etc/traefik/dynamic.yml
+    watch: true
+
+# Access logs au format JSON (consommés par Alloy) + rotation "file".
+accessLog:
+  filePath: "/var/log/traefik/access.log"
+  format: json
+  bufferingSize: 100
+
+{% if traefik_cert_type == 'letsencrypt' %}
+certificatesResolvers:
+  letsencrypt:
+    acme:
+{% if acme_is_staging %}
+      # Mise en scène : évite les rate-limits Let's Encrypt pendant les tests.
+      caServer: "https://acme-staging-v02.api.letsencrypt.org/directory"
+{% endif %}
+      email: "{{ admin_email }}"
+      storage: /etc/traefik/acme.json
+      httpChallenge:
+        entryPoint: web
+{% else %}
+# Mode autosigné : pas de résolveur ACME, Traefik sert son certificat
+# auto-généré par défaut sur websecure (avertissement navigateur attendu).
+{% endif %}

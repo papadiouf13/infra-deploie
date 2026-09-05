@@ -1,0 +1,119 @@
+---
+# =====================================================================
+# COMMON — durcissement de base de chaque serveur :
+#   - paquets de base
+#   - timezone
+#   - UFW (22/80/443 + 9323 depuis les réseaux Docker) puis activation
+#   - fail2ban (jail SSH)
+#   - unattended-upgrades
+#   - option : mise à jour DuckDNS (cron) si duckdns_token renseigné
+# =====================================================================
+
+- name: Apt - mise à jour du cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Apt - paquets de base
+  ansible.builtin.apt:
+    name:
+      - ufw
+      - fail2ban
+      - unattended-upgrades
+      - curl
+      - ca-certificates
+      - gnupg
+      - python3-apt
+    state: present
+
+- name: Régler le fuseau horaire
+  community.general.timezone:
+    name: "{{ timezone }}"
+
+# ----------------------------- UFW -----------------------------
+- name: UFW - politique par defaut : refuser les entrées
+  community.general.ufw:
+    direction: incoming
+    policy: deny
+
+- name: UFW - politique par defaut : autoriser les sorties
+  community.general.ufw:
+    direction: outgoing
+    policy: allow
+
+- name: UFW - autoriser SSH (22)
+  community.general.ufw:
+    rule: allow
+    port: "22"
+    proto: tcp
+
+- name: UFW - autoriser HTTP (80)
+  community.general.ufw:
+    rule: allow
+    port: "80"
+    proto: tcp
+
+- name: UFW - autoriser HTTPS (443)
+  community.general.ufw:
+    rule: allow
+    port: "443"
+    proto: tcp
+
+- name: UFW - autoriser les métriques du daemon Docker ({{ docker_metrics_port }}) depuis les réseaux Docker
+  community.general.ufw:
+    rule: allow
+    port: "{{ docker_metrics_port }}"
+    proto: tcp
+    from_ip: "{{ item }}"
+  loop: "{{ docker_metrics_allow_cidrs.split(',') }}"
+
+- name: UFW - activer le pare-feu
+  community.general.ufw:
+    state: enabled
+
+# Docker + UFW : sans politique FORWARD "ACCEPT", les conteneurs perdent
+# toute connectivité sortante et ne peuvent pas joindre Traefik.
+- name: UFW - autoriser le forwarding (requis pour Docker)
+  ansible.builtin.lineinfile:
+    path: /etc/default/ufw
+    regexp: '^DEFAULT_FORWARD_POLICY='
+    line: 'DEFAULT_FORWARD_POLICY="ACCEPT"'
+  notify: Recharger UFW
+
+# ----------------------------- fail2ban -----------------------------
+- name: fail2ban - configurer la jail SSH (port personnalisé via variables)
+  ansible.builtin.template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    mode: "0644"
+  notify: Redémarrer fail2ban
+
+- name: fail2ban - démarrer et activer au boot
+  ansible.builtin.systemd:
+    name: fail2ban
+    state: started
+    enabled: true
+
+# ----------------------------- unattended-upgrades -----------------------------
+- name: unattended-upgrades - activer les mises à jour automatiques
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+    mode: "0644"
+
+# ----------------------------- DuckDNS (optionnel) -----------------------------
+- name: DuckDNS - script de mise à jour de l'adresse IP
+  ansible.builtin.template:
+    src: duckdns-update.sh.j2
+    dest: /usr/local/bin/duckdns-update.sh
+    mode: "0755"
+  when: duckdns_token | length > 0 and duckdns_domains | length > 0
+
+- name: DuckDNS - planifier la mise à jour toutes les 10 minutes
+  ansible.builtin.cron:
+    name: "duckdns-update"
+    minute: "*/10"
+    job: "/usr/local/bin/duckdns-update.sh >/dev/null 2>&1"
+  when: duckdns_token | length > 0 and duckdns_domains | length > 0

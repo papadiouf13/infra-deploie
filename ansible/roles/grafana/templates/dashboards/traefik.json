@@ -1,0 +1,119 @@
+{
+  "uid": "infra-traefik",
+  "title": "Traefik",
+  "description": "Trafic du reverse proxy : requêtes, latence, codes, certificats TLS",
+  "tags": ["traefik", "proxy", "monitoring"],
+  "timezone": "utc",
+  "editable": true,
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "env",
+        "label": "Environnement",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": { "query": "label_values(up, environment)", "refId": "A" },
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "sort": 1,
+        "hide": 0,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 31,
+      "type": "stat",
+      "title": "Requêtes (cumul)",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum(traefik_service_requests_total{environment=~\"$env\"})", "legendFormat": "total", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" } }
+      ],
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 90 } ] } }, "overrides": [] }
+    },
+    {
+      "id": 32,
+      "type": "stat",
+      "title": "Erreurs 5xx (5 min)",
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum(increase(traefik_service_requests_total{code=~\"5..\", environment=~\"$env\"}[5m]))", "legendFormat": "5xx", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" } }
+      ],
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } }, "overrides": [] }
+    },
+    {
+      "id": 33,
+      "type": "stat",
+      "title": "Latence p95 (5 min)",
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le) (rate(traefik_service_request_duration_seconds_bucket{environment=~\"$env\"}[5m])))", "legendFormat": "p95", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" } }
+      ],
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "fieldConfig": { "defaults": { "unit": "s", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } }, "overrides": [] }
+    },
+    {
+      "id": 34,
+      "type": "stat",
+      "title": "Certificats (jours restants min)",
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "floor((min(traefik_tls_certs_not_after{environment=~\"$env\"}) - time()) / 86400)", "legendFormat": "jours", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" } }
+      ],
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "fieldConfig": { "defaults": { "unit": "d", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": 15 }, { "color": "orange", "value": 30 }, { "color": "red", "value": 45 } ] } }, "overrides": [] }
+    },
+    {
+      "id": 35,
+      "type": "timeseries",
+      "title": "Requêtes par seconde",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum by (service) (rate(traefik_service_requests_total{environment=~\"$env\"}[5m]))", "legendFormat": "{{ service }}", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "intervalFactor": 1 }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": { "defaults": { "unit": "reqps", "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 1, "stacking": { "mode": "none" }, "showPoints": "never" } }, "overrides": [] },
+      "interval": "30s"
+    },
+    {
+      "id": 36,
+      "type": "timeseries",
+      "title": "Latence p95 par service (s)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le, service) (rate(traefik_service_request_duration_seconds_bucket{environment=~\"$env\"}[5m])))", "legendFormat": "{{ service }}", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "intervalFactor": 1 }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": { "defaults": { "unit": "s", "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 1, "stacking": { "mode": "none" }, "showPoints": "never" } }, "overrides": [] },
+      "interval": "30s"
+    },
+    {
+      "id": 37,
+      "type": "timeseries",
+      "title": "Codes de réponse (req/s)",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum by (code) (rate(traefik_service_requests_total{environment=~\"$env\"}[5m]))", "legendFormat": "{{ code }}", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "intervalFactor": 1 }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": { "defaults": { "unit": "reqps", "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 1, "stacking": { "mode": "none" }, "showPoints": "never" } }, "overrides": [] },
+      "interval": "30s"
+    }
+  ]
+}

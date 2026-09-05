@@ -1,0 +1,78 @@
+# =====================================================================
+# Grafana Alloy — collecte de journaux (format River).
+# Généré par Ansible : environment/server injectés en labels externes.
+# =====================================================================
+
+// ---- Découverte des conteneurs Docker ----
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+// Enrichit chaque cible avec des labels lisibles (service, projet compose).
+discovery.relabel "containers" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    target_label  = "container"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    target_label  = "compose_project"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_image"]
+    target_label  = "image"
+  }
+}
+
+// Acheminement commun vers Loki.
+loki.write "receiver" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+  external_labels = {
+    environment = "{{ environment_name }}",
+    server      = "{{ server_name }}",
+  }
+}
+
+// ---- Logs des conteneurs Docker ----
+loki.source.docker "docker_logs" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.containers.output
+  forward_to = [loki.write.receiver]
+}
+
+// ---- Logs système (/var/log) ----
+loki.source.file "system_logs" {
+  targets    = [
+    { "__path__" = "/var/log/syslog" },
+    { "__path__" = "/var/log/auth.log" },
+  ]
+  forward_to = [loki.write.receiver]
+}
+
+// ---- Access logs Traefik (JSON) ----
+loki.source.file "traefik_access" {
+  targets    = [{ "__path__" = "/var/log/traefik/access.log" }]
+  forward_to = [loki.process.traefik.receiver]
+}
+
+loki.process "traefik" {
+  stage.json {
+    expressions = {
+      status      = "downstream_status",
+      method      = "request_method",
+      duration_ms = "request_duration_ms",
+      router      = "router_name",
+      source      = "remote_addr",
+      proto       = "request_protocol",
+    }
+  }
+  forward_to = [loki.write.receiver]
+}

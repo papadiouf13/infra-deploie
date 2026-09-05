@@ -1,0 +1,18 @@
+---
+# Valeurs par défaut du rôle common (surchargeables par group_vars).
+timezone: "UTC"
+
+# fail2ban
+fail2ban_maxretry: 5
+fail2ban_bantime: "1h"
+fail2ban_findtime: 600
+
+# Par défaut, on autorise l'accès aux métriques du daemon Docker (9323)
+# uniquement depuis les réseaux Docker monitoring/proxy.
+# Importants : sans cette règle, le scrape du job `docker` échouerait
+# car UFW bloque les connexions conteneur -> hôte par défaut.
+docker_metrics_port: 9323
+docker_metrics_allow_cidrs: "{{ docker_networks.proxy.subnet }},{{ docker_networks.monitoring.subnet }}"
+
+# Mises à jour automatiques
+unattended_upgrades_mail: ""

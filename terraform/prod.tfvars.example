@@ -1,0 +1,12 @@
+# =====================================================================
+# prod.tfvars.example — copier en prod.tfvars et adapter.
+# =====================================================================
+
+environment    = "prod"
+instance_type  = "c7i-flex.large"   # 4 vCPU / 4 Go (2 envs sur un exemple)
+ssh_key_name   = "monitoring-key"
+admin_cidr     = "1.2.3.4/32"       # remplacer par ton IP
+vpc_cidr       = "10.1.0.0/16"
+subnet_cidr    = "10.1.1.0/24"
+root_volume_size = 20
+# domain = "example.com"            # optionnel : si renseigné, utiliser un domaine réel

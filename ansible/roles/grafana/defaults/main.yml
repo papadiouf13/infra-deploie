@@ -1,0 +1,5 @@
+---
+# Valeurs par défaut du rôle grafana.
+grafana_uid: 472
+grafana_admin_user: admin
+grafana_mem_limit: "384m"

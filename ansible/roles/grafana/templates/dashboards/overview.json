@@ -1,0 +1,146 @@
+{
+  "uid": "infra-overview",
+  "title": "Vue d'ensemble",
+  "description": "État global de l'infrastructure (un seul clic par environnement)",
+  "tags": ["infra", "overview", "monitoring"],
+  "timezone": "utc",
+  "editable": true,
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "env",
+        "label": "Environnement",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": { "query": "label_values(up, environment)", "refId": "A" },
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "sort": 1,
+        "hide": 0,
+        "current": { "text": "All", "value": "$__all" }
+      },
+      {
+        "name": "server",
+        "label": "Serveur",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": { "query": "label_values(up{environment=~\"$env\"}, server)", "refId": "A" },
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "sort": 1,
+        "hide": 0,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Serveurs actifs",
+      "gridPos": { "h": 4, "w": 3, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "count(up{job=\"node_exporter\", environment=~\"$env\", server=~\"$server\"} == 1)", "legendFormat": "up", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" } }
+      ],
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 90 } ] } }, "overrides": [] }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Conteneurs détectés",
+      "gridPos": { "h": 4, "w": 3, "x": 3, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "count(container_cpu_usage_seconds_total{environment=~\"$env\", server=~\"$server\"})", "legendFormat": "containers", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" } }
+      ],
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 90 } ] } }, "overrides": [] }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Services indisponibles",
+      "gridPos": { "h": 4, "w": 3, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "count(up{environment=~\"$env\", server=~\"$server\"} == 0)", "legendFormat": "down", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" } }
+      ],
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } }, "overrides": [] }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Uptime serveur",
+      "gridPos": { "h": 4, "w": 3, "x": 9, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "max(time() - node_boot_time_seconds{environment=~\"$env\", server=~\"$server\"})", "legendFormat": "uptime", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" } }
+      ],
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "fieldConfig": { "defaults": { "unit": "s", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 90 } ] } }, "overrides": [] }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "CPU utilisé (%)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\", environment=~\"$env\", server=~\"$server\"}[5m])) * 100 or vector(0))", "legendFormat": "CPU", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "intervalFactor": 1 }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 1, "stacking": { "mode": "none" }, "showPoints": "never" } }, "overrides": [] },
+      "interval": "30s"
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Mémoire utilisée (%)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "(1 - node_memory_MemAvailable_bytes{environment=~\"$env\", server=~\"$server\"} / node_memory_MemTotal_bytes{environment=~\"$env\", server=~\"$server\"}) * 100", "legendFormat": "MEM", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "intervalFactor": 1 }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 1, "stacking": { "mode": "none" }, "showPoints": "never" } }, "overrides": [] },
+      "interval": "30s"
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Requêtes Traefik (req/s)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum(rate(traefik_service_requests_total{environment=~\"$env\", server=~\"$server\"}[5m]))", "legendFormat": "rps", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "intervalFactor": 1 }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": { "defaults": { "unit": "reqps", "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 1, "stacking": { "mode": "none" }, "showPoints": "never" } }, "overrides": [] },
+      "interval": "30s"
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Erreurs 5xx (req/s)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum(rate(traefik_service_requests_total{code=~\"5..\", environment=~\"$env\", server=~\"$server\"}[5m]))", "legendFormat": "5xx", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "intervalFactor": 1 }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": { "defaults": { "unit": "reqps", "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 1, "stacking": { "mode": "none" }, "showPoints": "never" } }, "overrides": [] },
+      "interval": "30s"
+    }
+  ]
+}

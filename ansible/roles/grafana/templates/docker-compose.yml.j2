@@ -1,0 +1,59 @@
+# =====================================================================
+# Grafana — réseaux proxy (Traefik) + monitoring.
+# Provisioning monté en lecture seule ; données dans ./data (chown 472).
+# =====================================================================
+services:
+  grafana:
+    image: "{{ images.grafana }}"
+    container_name: grafana
+    restart: unless-stopped
+    user: "{{ grafana_uid }}:{{ grafana_uid }}"
+    networks:
+      - proxy
+      - monitoring
+    expose:
+      - "3000"
+    mem_limit: "{{ grafana_mem_limit }}"
+    environment:
+      GF_PATHS_PROVISIONING: /etc/grafana/provisioning
+      GF_SERVER_ROOT_URL: "https://{{ grafana_host }}/"
+      GF_SERVER_DOMAIN: "{{ grafana_host }}"
+      GF_SERVER_HTTP_PORT: "3000"
+      GF_SECURITY_ADMIN_USER: "{{ grafana_admin_user }}"
+      GF_SECURITY_ADMIN_PASSWORD: "{{ grafana_admin_password }}"
+      GF_SECURITY_DISABLE_GRAVATAR: "true"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ALERTING_ENABLED: "true"
+      GF_UNIFIED_ALERTING_ENABLED: "true"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_SNAPSHOTS_EXTERNAL_ENABLED: "false"
+      GF_LOG_MODE: console
+{% if alerting.email.enabled %}
+      # SMTP utilisé par Grafana pour l'alerte e-mail.
+      GF_SMTP_ENABLED: "true"
+      GF_SMTP_HOST: "{{ alerting.email.smtp_host }}:{{ alerting.email.smtp_port }}"
+      GF_SMTP_USER: "{{ alerting.email.smtp_user }}"
+      GF_SMTP_PASSWORD: "{{ alerting.email.smtp_password }}"
+      GF_SMTP_FROM_ADDRESS: "{{ alerting.email.smtp_from }}"
+      GF_SMTP_FROM_NAME: "{{ alerting.email.smtp_from_name }}"
+      GF_SMTP_STARTTLS_POLICY: "{% if alerting.email.smtp_starttls %}Required{% else %}Opportunistic{% endif %}"
+{% endif %}
+    volumes:
+      - ./provisioning:/etc/grafana/provisioning:ro
+      - ./data:/var/lib/grafana
+      - ./dashboards:/var/lib/grafana/dashboards:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`{{ grafana_host }}`)"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.service=grafana"
+{% if traefik_cert_type == 'letsencrypt' %}
+      - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
+{% endif %}
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+
+networks:
+  proxy:
+    external: true
+  monitoring:
+    external: true

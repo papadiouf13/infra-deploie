@@ -1,0 +1,32 @@
+# =====================================================================
+# Grafana Alloy — réseau monitoring, socket Docker monté en lecture seule.
+# =====================================================================
+services:
+  alloy:
+    image: "{{ images.alloy }}"
+    container_name: alloy
+    restart: unless-stopped
+    user: "{{ alloy_uid }}:{{ alloy_uid }}"
+    networks:
+      - monitoring
+    expose:
+      - "12345"
+    mem_limit: "{{ alloy_mem_limit }}"
+    volumes:
+      - ./config.alloy:/etc/alloy/config.alloy:ro
+      # Socket Docker en lecture seule : découverte + lecture des logs.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Logs système (syslog, auth) — lecture seule.
+      - /var/log:/var/log:ro
+      # Access logs de Traefik (format json) — lecture seule.
+      - /opt/traefik/logs:/var/log/traefik:ro
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - --stability.level=generally-available
+      - /etc/alloy/config.alloy
+
+networks:
+  monitoring:
+    external: true

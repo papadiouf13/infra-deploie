@@ -1,0 +1,97 @@
+---
+# =====================================================================
+# GRAFANA — console unique du monitoring.
+# Datasources (Prometheus/Loki), dashboards (provider fichier) et
+# alerting (contact points, politiques, règles) entièrement provisionnés.
+# Exposé via Traefik sur grafana.<host> : aucun port publié sur l'hôte.
+# =====================================================================
+
+- name: Grafana - répertoires
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    mode: "{{ item.mode }}"
+    owner: "{{ item.owner | default('root') }}"
+  loop:
+    - { path: /opt/grafana, mode: "0755" }
+    - { path: /opt/grafana/data, mode: "0750", owner: "{{ grafana_uid }}" }
+    - { path: /opt/grafana/dashboards, mode: "0755" }
+    - { path: /opt/grafana/provisioning, mode: "0755" }
+    - { path: /opt/grafana/provisioning/datasources, mode: "0755" }
+    - { path: /opt/grafana/provisioning/dashboards, mode: "0755" }
+    - { path: /opt/grafana/provisioning/alerting, mode: "0755" }
+
+- name: Grafana - datasources provisionnés
+  ansible.builtin.template:
+    src: datasources.yml.j2
+    dest: /opt/grafana/provisioning/datasources/datasources.yml
+    mode: "0644"
+  notify: Redémarrer Grafana
+
+- name: Grafana - provider de dashboards
+  ansible.builtin.template:
+    src: dashboards.yml.j2
+    dest: /opt/grafana/provisioning/dashboards/dashboards.yml
+    mode: "0644"
+  notify: Redémarrer Grafana
+
+- name: Grafana - contact points d'alerte
+  ansible.builtin.template:
+    src: contact-points.yml.j2
+    dest: /opt/grafana/provisioning/alerting/contact-points.yml
+    mode: "0600"
+  notify: Redémarrer Grafana
+
+- name: Grafana - politiques de routage des alertes
+  ansible.builtin.template:
+    src: policies.yml.j2
+    dest: /opt/grafana/provisioning/alerting/policies.yml
+    mode: "0644"
+  notify: Redémarrer Grafana
+
+- name: Grafana - règles d'alerte
+  ansible.builtin.template:
+    src: rules.yml.j2
+    dest: /opt/grafana/provisioning/alerting/rules.yml
+    mode: "0644"
+  notify: Redémarrer Grafana
+
+- name: Grafana - dashboards (fichiers statiques, templating fait par Grafana)
+  ansible.builtin.copy:
+    src: "dashboards/{{ item }}.json"
+    dest: "/opt/grafana/dashboards/{{ item }}.json"
+    mode: "0644"
+  loop: "{{ grafana_dashboards }}"
+  notify: Redémarrer Grafana
+
+- name: Grafana - docker-compose
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/grafana/docker-compose.yml
+    mode: "0644"
+  notify: Redémarrer Grafana
+
+- name: Grafana - démarrer / mettre à jour
+  community.docker.docker_compose_v2:
+    project_src: /opt/grafana
+    state: present
+    pull: missing
+
+- name: Grafana - attendre que le service soit prêt (HTTP interne)
+  ansible.builtin.uri:
+    url: http://127.0.0.1:3000/api/health
+    status_code: 200
+  register: grafana_health
+  until: grafana_health.status == 200
+  retries: 20
+  delay: 5
+
+- name: Grafana - vérifier l'accès authentifié via Traefik (HTTPS)
+  ansible.builtin.uri:
+    url: "https://{{ grafana_host }}/api/org"
+    user: "{{ grafana_admin_user }}"
+    password: "{{ grafana_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    status_code: 200
+  ignore_errors: true

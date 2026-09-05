@@ -1,0 +1,29 @@
+# =====================================================================
+# Configuration DYNAMIQUE de Traefik — middlewares partagés.
+# Les hash bcrypt sont PRÉCALCULÉS par scripts/gen-bcrypt-hash.sh puis
+# stockés dans group_vars/vault.yml (déterministe + aucun secret en clair).
+# =====================================================================
+http:
+  middlewares:
+    # Authentication Prometheus (basic-auth bcrypt).
+    basic-auth-prom:
+      basicAuth:
+        users:
+          - "{{ prometheus_basic_auth_user }}:{{ prometheus_basic_auth_hash }}"
+    # Authentication dashboard Traefik (basic-auth bcrypt).
+    basic-auth-traefik:
+      basicAuth:
+        users:
+          - "{{ traefik_dashboard_basic_auth_user }}:{{ traefik_dashboard_basic_auth_hash }}"
+    # IP allowlist admin (double protection pour Prometheus / dashboard).
+    allowlist-admin:
+      ipAllowList:
+        sourceRange: {{ admin_cidr }}
+    # En-têtes de sécurité communs.
+    security-headers:
+      headers:
+        customFrameOptionsValue: "SAMEORIGIN"
+        contentTypeNosniff: true
+        browserXssFilter: true
+        referrerPolicy: "strict-origin-when-cross-origin"
+        permissionsPolicy: "camera=(), microphone=(), geolocation=()"

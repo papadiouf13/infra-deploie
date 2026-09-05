@@ -1,0 +1,17 @@
+# =====================================================================
+# dev.tfvars.example — copier en dev.tfvars et adapter.
+# Créer la key pair AVANT : aws ec2 create-key-pair --key-name monitoring-key
+# (ou utiliser une key existante).
+#
+# NB : L'adresse IP admin doit être l'IP publique de ta machine (ou 0.0.0.0/0
+# pour un accès global — déconseillé).
+# =====================================================================
+
+environment    = "dev"
+instance_type  = "t3.small"         # éligible Free Tier
+ssh_key_name   = "monitoring-key"
+admin_cidr     = "1.2.3.4/32"       # { ma_ip } — remplacer par ton IP
+vpc_cidr       = "10.0.0.0/16"
+subnet_cidr    = "10.0.1.0/24"
+root_volume_size = 20
+# domain = ""                      # optionnel : sinon URL nip.io via l'IP

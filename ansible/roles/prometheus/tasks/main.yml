@@ -1,0 +1,46 @@
+---
+# =====================================================================
+# PROMETHEUS — collecte des métriques de l'environnement.
+# Toutes les cibles sont explicites + un job docker_sd pour les conteneurs
+# futurs portant le label prometheus.scrape=true.
+# Exposé aux utilisateurs UNIQUEMENT via Traefik (basic-auth + allowlist).
+# =====================================================================
+
+- name: Prometheus - répertoires
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    mode: "{{ item.mode }}"
+    owner: "{{ item.owner | default('root') }}"
+  loop:
+    - { path: /opt/prometheus, mode: "0755" }
+    - { path: /opt/prometheus/data, mode: "0750", owner: "{{ prometheus_uid }}" }
+
+- name: Prometheus - configuration principale
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: /opt/prometheus/prometheus.yml
+    mode: "0644"
+  notify: Redémarrer Prometheus
+
+- name: Prometheus - docker-compose
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/prometheus/docker-compose.yml
+    mode: "0644"
+  notify: Redémarrer Prometheus
+
+- name: Prometheus - démarrer / mettre à jour
+  community.docker.docker_compose_v2:
+    project_src: /opt/prometheus
+    state: present
+    pull: missing
+
+- name: Prometheus - attendre le endpoint de santé
+  ansible.builtin.uri:
+    url: http://127.0.0.1:9090/-/healthy
+    status_code: 200
+  register: prom_ready
+  until: prom_ready.status == 200
+  retries: 15
+  delay: 5

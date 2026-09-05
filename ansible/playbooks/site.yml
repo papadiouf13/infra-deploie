@@ -1,0 +1,53 @@
+---
+# =====================================================================
+# site.yml — pile complète de monitoring sur UN serveur.
+#
+#   ansible-playbook -i inventories/dev/hosts.ini playbooks/site.yml
+#
+# Ordre d'installation :
+#   1. common   : durcissement (UFW, fail2ban), upgrades auto, DuckDNS
+#   2. docker   : daemon.json (logs + metrics-addr) et réseaux
+#   3. traefik  : reverse-proxy TLS + whoami (test des routes)
+#   4. node_exporter / cadvisor : métriques hôte + conteneurs
+#   5. prometheus : collecte
+#   6. loki / alloy : journaux centralisés
+#   7. grafana  : console + alerting
+#   8. sonarqube : (seulement si enable_sonarqube, par défaut en prod)
+# =====================================================================
+
+- name: Provisionner la pile de monitoring
+  hosts: all
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Prétâche - disponibilité de la variable enable_sonarqube
+      ansible.builtin.assert:
+        that:
+          - enable_sonarqube is defined
+          - monitoring_retention_days is defined
+        fail_msg: "group_vars all/dev/prod sont requis."
+
+  roles:
+    - common
+    - docker
+    - traefik
+    - node_exporter
+    - cadvisor
+    - prometheus
+    - loki
+    - alloy
+    - grafana
+    - role: sonarqube
+      when: enable_sonarqube | bool
+
+  post_tasks:
+    - name: Récapitulatif des URLs
+      ansible.builtin.debug:
+        msg:
+          - "Grafana   : https://{{ grafana_host }}"
+          - "Prometheus: https://{{ prometheus_host }}"
+          - "Traefik   : https://{{ traefik_host }}"
+          - "Whoami    : https://{{ whoami_host }}"
+          - "SonarQube : https://{{ sonar_host }} (prod uniquement)"
+          - "Aucun port d'application exposé en dehors de 80/443 (Traefik)."

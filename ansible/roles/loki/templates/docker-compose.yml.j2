@@ -1,0 +1,22 @@
+# =====================================================================
+# Stockage des logs, réseau monitoring.
+# =====================================================================
+services:
+  loki:
+    image: "{{ images.loki }}"
+    container_name: loki
+    restart: unless-stopped
+    user: "{{ loki_uid }}:{{ loki_uid }}"
+    networks:
+      - monitoring
+    expose:
+      - "3100"
+    volumes:
+      - ./loki.yml:/etc/loki/loki.yml:ro
+      - ./data:/loki
+    command:
+      - -config.file=/etc/loki/loki.yml
+
+networks:
+  monitoring:
+    external: true

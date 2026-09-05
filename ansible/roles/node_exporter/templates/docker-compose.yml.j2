@@ -1,0 +1,24 @@
+# Node Exporter — exposé uniquement sur le réseau interne `monitoring`.
+services:
+  node-exporter:
+    image: "{{ images.node_exporter }}"
+    container_name: node-exporter
+    restart: unless-stopped
+    user: "65534:65534"
+    networks:
+      - monitoring
+    expose:
+      - "9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/rootfs
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc|var/lib/docker)($$|/)
+
+networks:
+  monitoring:
+    external: true

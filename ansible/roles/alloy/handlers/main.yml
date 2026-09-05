@@ -1,0 +1,5 @@
+---
+- name: Redémarrer Alloy
+  ansible.builtin.command:
+    cmd: docker compose -f /opt/alloy/docker-compose.yml restart alloy
+  changed_when: true

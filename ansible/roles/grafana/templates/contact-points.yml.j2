@@ -1,0 +1,38 @@
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: all-channels
+    receivers:
+      - uid: cp-email
+        type: email
+        settings:
+          addresses: "{{ alerting.email.to }}"
+        disableResolveMessage: false
+{% if alerting.telegram.enabled %}
+      - uid: cp-telegram
+        type: telegram
+        settings:
+          chatid: "{{ alerting.telegram.chat_id }}"
+        secureSettings:
+          btoken: "{{ alerting.telegram.bot_token }}"
+        disableResolveMessage: false
+{% endif %}
+{% if alerting.slack.enabled %}
+      - uid: cp-slack
+        type: slack
+        settings:
+          recipient: "{{ alerting.slack.channel | default('#infra-alerts') }}"
+        secureSettings:
+          url: "{{ alerting.slack.webhook_url }}"
+        disableResolveMessage: false
+{% endif %}
+{% if alerting.discord.enabled %}
+      - uid: cp-discord
+        type: discord
+        settings:
+          avatar_url: ""
+        secureSettings:
+          url: "{{ alerting.discord.webhook_url }}"
+        disableResolveMessage: false
+{% endif %}

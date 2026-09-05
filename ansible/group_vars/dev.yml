@@ -1,0 +1,20 @@
+---
+# =====================================================================
+# group_vars/dev.yml — spécificités de l'environnement DEV.
+# =====================================================================
+
+# ---- TLS : Let's Encrypt en mode STAGING en dev (évite les rate-limits) ----
+acme_is_staging: true
+
+# ---- Rétention volontairement courte en dev ----
+monitoring_retention_days: 7
+loki_retention_hours: 72            # 3 j
+
+# ---- Hostnames : si un vrai domaine est disponible, redéfinir ici ----
+# grafana_host: "grafana.dev.example.com"
+# prometheus_host: "prometheus.dev.example.com"
+# traefik_host: "traefik.dev.example.com"
+# sonar_host: "sonar.dev.example.com"
+
+# ---- SonarQube désactivé en dev (RAM de 2 Go trop juste) ----
+enable_sonarqube: false

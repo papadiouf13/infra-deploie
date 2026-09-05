@@ -1,0 +1,5 @@
+---
+# Valeurs par défaut du rôle docker.
+docker_log_max_size: "10m"
+docker_log_max_file: "3"
+docker_metrics_addr: "0.0.0.0:9323"

@@ -1,0 +1,5 @@
+---
+- name: Redémarrer SonarQube
+  ansible.builtin.command:
+    cmd: docker compose -f /opt/sonarqube/docker-compose.yml restart sonarqube
+  changed_when: true

@@ -1,0 +1,70 @@
+---
+# =====================================================================
+# SONARQUBE — qualité du code (Community LTS) + PostgreSQL associé.
+# Activé par défaut uniquement en prod (variable enable_sonarqube).
+# Exposé via Traefik sur sonar.<host> : aucun port publié sur l'hôte.
+# =====================================================================
+
+- name: SonarQube - vérifier que le rôle est activé
+  ansible.builtin.fail:
+    msg: "Le rôle sonarqube est exécuté alors que enable_sonarqube=false"
+  when: not enable_sonarqube | bool
+
+- name: SonarQube - répertoires
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    mode: "{{ item.mode }}"
+    owner: "{{ item.owner | default('root') }}"
+  loop:
+    - { path: /opt/sonarqube, mode: "0755" }
+    - { path: /opt/sonarqube/data, mode: "0750", owner: "{{ sonar_uid }}" }
+    - { path: /opt/sonarqube/logs, mode: "0750", owner: "{{ sonar_uid }}" }
+    - { path: /opt/sonarqube/extensions, mode: "0750", owner: "{{ sonar_uid }}" }
+    - { path: /opt/sonarqube/db-data, mode: "0750", owner: "{{ sonar_db_uid }}" }
+
+- name: SonarQube - docker-compose
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/sonarqube/docker-compose.yml
+    mode: "0644"
+  notify: Redémarrer SonarQube
+
+- name: SonarQube - démarrer / mettre à jour
+  community.docker.docker_compose_v2:
+    project_src: /opt/sonarqube
+    state: present
+    pull: missing
+
+- name: SonarQube - attendre que l'instance réponde via Traefik (HTTPS)
+  ansible.builtin.uri:
+    url: "https://{{ sonar_host }}/api/system/status"
+    status_code: 200
+    validate_certs: false
+  register: sonar_status
+  until: sonar_status.status == 200 and "'UP' in sonar_status.json.get('status','')"
+  retries: 30
+  delay: 10
+  ignore_errors: true
+
+- name: SonarQube - changer le mot de passe admin (une fois, depuis le défaut "admin")
+  ansible.builtin.uri:
+    url: "https://{{ sonar_host }}/api/users/change_password"
+    method: POST
+    user: admin
+    password: "{{ sonarqube_admin_current_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    body_format: form-urlencoded
+    body:
+      login: admin
+      previousPassword: "{{ sonarqube_admin_current_password }}"
+      password: "{{ sonarqube_admin_new_password }}"
+    status_code: [200, 400, 401]
+  register: sonar_pw
+  changed_when: sonar_pw.status == 200
+  when: sonarqube_admin_current_password == "admin"
+
+- name: SonarQube - afficher l'état final
+  ansible.builtin.debug:
+    msg: "SonarQube prêt sur https://{{ sonar_host }} (mot de passe admin modifié si requis)"

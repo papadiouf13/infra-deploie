@@ -1,0 +1,4 @@
+---
+# Valeurs par défaut du rôle alloy.
+alloy_uid: 10001
+alloy_mem_limit: "512m"

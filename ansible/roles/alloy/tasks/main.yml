@@ -1,0 +1,43 @@
+---
+# =====================================================================
+# ALLOY — collecte des journaux :
+#   - logs des conteneurs Docker (via le socket Docker en lecture seule)
+#   - logs système (/var/log)
+#   - access logs Traefik (json parsés)
+# Envoie tout vers Loki (réseau monitoring). Jamais routé par Traefik.
+# =====================================================================
+
+- name: Alloy - répertoire
+  ansible.builtin.file:
+    path: /opt/alloy
+    state: directory
+    mode: "0755"
+
+- name: Alloy - configuration
+  ansible.builtin.template:
+    src: config.alloy.j2
+    dest: /opt/alloy/config.alloy
+    mode: "0644"
+  notify: Redémarrer Alloy
+
+- name: Alloy - docker-compose
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/alloy/docker-compose.yml
+    mode: "0644"
+  notify: Redémarrer Alloy
+
+- name: Alloy - démarrer / mettre à jour
+  community.docker.docker_compose_v2:
+    project_src: /opt/alloy
+    state: present
+    pull: missing
+
+- name: Alloy - attendre que les métriques répondent
+  ansible.builtin.uri:
+    url: http://127.0.0.1:12345/metrics
+    status_code: 200
+  register: alloy_metrics
+  until: alloy_metrics.status == 200
+  retries: 15
+  delay: 5

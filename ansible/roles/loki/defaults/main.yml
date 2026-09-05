@@ -1,0 +1,4 @@
+---
+# Valeurs par défaut du rôle loki.
+loki_uid: 10001
+loki_retention: "{{ loki_retention_hours }}h"

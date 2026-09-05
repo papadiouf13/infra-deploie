@@ -1,0 +1,4 @@
+---
+# Valeurs par défaut du rôle traefik.
+# Le hash bcrypt des middlewares basic-auth est dérivé de façon déterministe
+# (salt fixe + password des vault) pour garantir l'idempotence du fichier.

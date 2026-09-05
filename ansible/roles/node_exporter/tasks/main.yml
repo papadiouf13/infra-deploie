@@ -1,0 +1,32 @@
+---
+# =====================================================================
+# NODE EXPORTER — métriques système (CPU, RAM, disque, réseau, load).
+# Réseau monitoring uniquement : jamais routé par Traefik.
+# =====================================================================
+
+- name: Node Exporter - répertoire
+  ansible.builtin.file:
+    path: /opt/node-exporter
+    state: directory
+    mode: "0755"
+
+- name: Node Exporter - docker-compose
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/node-exporter/docker-compose.yml
+    mode: "0644"
+
+- name: Node Exporter - démarrer / mettre à jour
+  community.docker.docker_compose_v2:
+    project_src: /opt/node-exporter
+    state: present
+    pull: missing
+
+- name: Node Exporter - attendre que les métriques répondent
+  ansible.builtin.uri:
+    url: http://127.0.0.1:9100/metrics
+    status_code: 200
+  register: ne_metrics
+  until: ne_metrics.status == 200
+  retries: 10
+  delay: 3

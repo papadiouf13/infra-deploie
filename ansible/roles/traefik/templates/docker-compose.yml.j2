@@ -1,0 +1,54 @@
+# =====================================================================
+# docker-compose Traefik : traefik (seul à publier 80/443) + whoami.
+# Réseaux externes créés par le rôle docker.
+# =====================================================================
+services:
+  traefik:
+    image: "{{ images.traefik }}"
+    container_name: traefik
+    restart: unless-stopped
+    networks:
+      - proxy
+      - monitoring
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - ./acme.json:/etc/traefik/acme.json
+      - ./logs:/var/log/traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`{{ traefik_host }}`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.middlewares=basic-auth-traefik,allowlist-admin"
+{% if traefik_cert_type == 'letsencrypt' %}
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+{% endif %}
+
+  # Service d'exemple de routage (aucune application déployée).
+  whoami:
+    image: "{{ images.whoami }}"
+    container_name: whoami
+    restart: unless-stopped
+    networks:
+      - proxy
+    expose:
+      - "80"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=Host(`{{ whoami_host }}`)"
+      - "traefik.http.routers.whoami.entrypoints=websecure"
+      - "traefik.http.services.whoami.loadbalancer.server.port=80"
+{% if traefik_cert_type == 'letsencrypt' %}
+      - "traefik.http.routers.whoami.tls.certresolver=letsencrypt"
+{% endif %}
+
+networks:
+  proxy:
+    external: true
+  monitoring:
+    external: true

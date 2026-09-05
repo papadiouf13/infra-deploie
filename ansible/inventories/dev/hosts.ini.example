@@ -1,0 +1,16 @@
+# =====================================================================
+# Inventaire DEV — fichier d'exemple.
+#
+# Deux usages :
+#   1) AWS  : généré automatiquement par `make inventory ENV=dev`
+#             (output terraform "ansible_inventory").
+#   2) VPS  : copier ce fichier en hosts.ini et renseigner les IP.
+#
+# Variables d'hôte attendues : public_ip, private_ip, server_name.
+# Les secrets et paramètres communs sont dans ansible/group_vars/.
+# =====================================================================
+[dev]
+dev ansible_host=203.0.113.10 public_ip=203.0.113.10 private_ip=203.0.113.10 server_name=dev-server
+
+[all:vars]
+ansible_user=ubuntu

@@ -1,0 +1,44 @@
+---
+# =====================================================================
+# LOKI — agrégation de journaux. Stockage filesystem, rétention variable.
+# Réseau monitoring uniquement : jamais routé par Traefik.
+# =====================================================================
+
+- name: Loki - répertoires
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    mode: "{{ item.mode }}"
+    owner: "{{ item.owner | default('root') }}"
+  loop:
+    - { path: /opt/loki, mode: "0755" }
+    - { path: /opt/loki/data, mode: "0750", owner: "{{ loki_uid }}" }
+
+- name: Loki - configuration
+  ansible.builtin.template:
+    src: loki.yml.j2
+    dest: /opt/loki/loki.yml
+    mode: "0644"
+  notify: Redémarrer Loki
+
+- name: Loki - docker-compose
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/loki/docker-compose.yml
+    mode: "0644"
+  notify: Redémarrer Loki
+
+- name: Loki - démarrer / mettre à jour
+  community.docker.docker_compose_v2:
+    project_src: /opt/loki
+    state: present
+    pull: missing
+
+- name: Loki - attendre que le service réponde
+  ansible.builtin.uri:
+    url: http://127.0.0.1:3100/ready
+    status_code: 200
+  register: loki_ready
+  until: loki_ready.status == 200
+  retries: 15
+  delay: 5

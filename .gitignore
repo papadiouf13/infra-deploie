@@ -1,0 +1,29 @@
+# --- Terraform ---
+.terraform/
+*.tfstate
+*.tfstate.*
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+
+# Secrets terraform (jamais en clair dans git)
+*.tfvars
+!*.tfvars.example
+
+# --- Ansible ---
+# Inventaires générés (contiennent IP réelles + vars d'hôte)
+ansible/inventories/*/hosts.ini
+!ansible/inventories/*/hosts.ini.example
+
+# Vault chiffré (ne commit jamais le vrai vault)
+ansible/group_vars/vault.yml
+!ansible/group_vars/vault.yml.example
+
+# Clés SSH privées
+*.pem
+*.key
+
+# --- Divers ---
+.env
+.DS_Store
+*.log

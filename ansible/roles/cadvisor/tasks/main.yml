@@ -1,0 +1,32 @@
+---
+# =====================================================================
+# CADVISOR — métriques des conteneurs (CPU, RAM, I/O, restarts).
+# Réseau monitoring uniquement : jamais routé par Traefik.
+# =====================================================================
+
+- name: cAdvisor - répertoire
+  ansible.builtin.file:
+    path: /opt/cadvisor
+    state: directory
+    mode: "0755"
+
+- name: cAdvisor - docker-compose
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/cadvisor/docker-compose.yml
+    mode: "0644"
+
+- name: cAdvisor - démarrer / mettre à jour
+  community.docker.docker_compose_v2:
+    project_src: /opt/cadvisor
+    state: present
+    pull: missing
+
+- name: cAdvisor - attendre que les métriques répondent
+  ansible.builtin.uri:
+    url: http://127.0.0.1:8080/metrics
+    status_code: 200
+  register: ca_metrics
+  until: ca_metrics.status == 200
+  retries: 15
+  delay: 5

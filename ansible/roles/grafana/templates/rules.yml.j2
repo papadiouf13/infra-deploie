@@ -1,0 +1,76 @@
+{% macro alert_rule(uid, title, expr, severity='critical', for='2m', nodata='Alerting') -%}
+- uid: {{ uid }}
+  title: "{{ title }}"
+  for: "{{ for }}"
+  labels:
+    severity: {{ severity }}
+    environment: "{{ environment_name }}"
+  annotations:
+    summary: "{{ title }} ({{ environment_name }})"
+  noDataState: {{ nodata }}
+  execErrState: Error
+  condition: C
+  data:
+    - refId: A
+      datasourceUid: prometheus
+      model:
+        refId: A
+        datasource:
+          type: prometheus
+          uid: prometheus
+        expr: "{{ expr }}"
+        instant: true
+      relativeTimeRange:
+        from: 300
+        to: 0
+    - refId: B
+      datasourceUid: __expr__
+      type: __expr__
+      model:
+        type: reduce
+        expression: A
+        reducer: last
+        refId: B
+      relativeTimeRange:
+        from: 300
+        to: 0
+    - refId: C
+      datasourceUid: __expr__
+      type: __expr__
+      model:
+        type: threshold
+        expression: B
+        refId: C
+        conditions:
+          - evaluator:
+              type: gt
+              params: [0]
+{%- endmacro %}
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: disponibilite
+    folder: Monitoring
+    interval: 1m
+    rules:
+{{ alert_rule('alert-node-up', 'Node Exporter indisponible', 'up{job="node_exporter"} == 0', 'critical', '2m', 'Alerting') }}
+{{ alert_rule('alert-prometheus-up', 'Prometheus indisponible', 'up{job="prometheus"} == 0', 'critical', '2m', 'Alerting') }}
+{{ alert_rule('alert-traefik-up', 'Traefik indisponible', 'up{job="traefik"} == 0', 'critical', '2m', 'Alerting') }}
+{{ alert_rule('alert-docker-up', 'Daemon Docker indisponible', 'up{job="docker"} == 0', 'critical', '2m', 'Alerting') }}
+{{ alert_rule('alert-loki-up', 'Loki indisponible', 'up{job="loki"} == 0', 'critical', '2m', 'Alerting') }}
+{{ alert_rule('alert-grafana-up', 'Grafana indisponible', 'up{job="grafana"} == 0', 'critical', '2m', 'Alerting') }}
+{{ alert_rule('alert-alloy-up', 'Alloy indisponible', 'up{job="alloy"} == 0', 'critical', '2m', 'Alerting') }}
+{{ alert_rule('alert-cadvisor-up', 'cAdvisor indisponible', 'up{job="cadvisor"} == 0', 'warning', '5m', 'Alerting') }}
+
+  - orgId: 1
+    name: ressources
+    folder: Monitoring
+    interval: 1m
+    rules:
+{{ alert_rule('alert-load', 'Charge CPU élevée', 'node_load15 / count(node_cpu_seconds_total{mode="user"}) > ' ~ alerts.server.cpu_warning / 100, 'warning', '10m', 'OK') }}
+{{ alert_rule('alert-mem', 'Mémoire insuffisante', '(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) > ' ~ alerts.server.ram_critical / 100, 'critical', '5m', 'OK') }}
+{{ alert_rule('alert-disk-warn', 'Disque root presque plein', 'node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} < (1 - ' ~ alerts.server.disk_warning / 100 ~ ')', 'warning', '10m', 'OK') }}
+{{ alert_rule('alert-disk-crit', 'Disque root saturé', 'node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} < (1 - ' ~ alerts.server.disk_critical / 100 ~ ')', 'critical', '5m', 'OK') }}
+{{ alert_rule('alert-5xx', 'Erreurs 5xx sur Traefik', 'sum by (service) (rate(traefik_service_requests_total{code=~"5.."}[5m])) > ' ~ alerts.traefik.error_5xx_pct / 100, 'warning', '5m', 'OK') }}
+{{ alert_rule('alert-latency', 'Latence p95 élevée', 'histogram_quantile(0.95, sum by (le, service) (rate(traefik_service_request_duration_seconds_bucket[5m]))) > ' ~ alerts.traefik.latency_p95_seconds, 'warning', '5m', 'OK') }}

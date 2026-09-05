@@ -1,0 +1,6 @@
+---
+# Valeurs par défaut du rôle sonarqube.
+sonar_uid: 1000
+sonar_db_uid: 999
+sonar_network: sonar-net
+sonarqube_web_port: 9000

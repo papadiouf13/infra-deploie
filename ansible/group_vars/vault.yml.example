@@ -1,0 +1,62 @@
+---
+# =====================================================================
+# group_vars/vault.yml.example
+#
+# Copier ce fichier en group_vars/vault.yml puis CHIFFRER :
+#
+#   cp vault.yml.example vault.yml
+#   ansible-vault encrypt vault.yml
+#
+# Ensuite lancer les playbooks avec : --ask-vault-pass
+# (ou une variable d'environnement ANSIBLE_VAULT_PASSWORD_FILE).
+#
+# NB : les hash bcrypt peuvent être générés avec scripts/gen-bcrypt-hash.sh.
+# =====================================================================
+
+# ---- Grafana (identifiants admin de la console) ----
+grafana_admin_user: admin
+grafana_admin_password: CHANGE-ME-GRAFANA-PASSWORD
+
+# ---- Prometheus (basic-auth devant Traefik) ----
+prometheus_basic_auth_user: prometheus
+# Hash bcrypt du mot de passe (voir scripts/gen-bcrypt-hash.sh) :
+prometheus_basic_auth_hash: "$2b$12$CHANGE-ME-GENERATED-HASH"
+
+# ---- Dashboard Traefik (basic-auth devant Traefik) ----
+traefik_dashboard_basic_auth_user: traefik
+# Hash bcrypt du mot de passe (voir scripts/gen-bcrypt-hash.sh) :
+traefik_dashboard_basic_auth_hash: "$2b$12$CHANGE-ME-GENERATED-HASH"
+
+# ---- SonarQube ----
+sonarqube_admin_current_password: admin
+sonarqube_admin_new_password: CHANGE-ME-SONAR-PASSWORD
+sonarqube_db_password: CHANGE-ME-SONAR-DB-PASSWORD
+
+# ---- Alerting (contact points Grafana + SMTP Grafana) ----
+# NB : ce bloc REPLACE celui de all.yml (précédence group_vars).
+# Il doit donc contenir TOUTES les clés alerting.
+alerting:
+  email:
+    enabled: true
+    to: "change-me@example.com"
+    smtp_host: "smtp.example.com"
+    smtp_port: 465
+    smtp_from: "monitoring@change-me.com"
+    smtp_from_name: "Infra Monitoring"
+    smtp_user: "CHANGE-ME-SMTP-USER"
+    smtp_password: CHANGE-ME-SMTP-PASSWORD
+    smtp_starttls: false
+  telegram:
+    enabled: true
+    bot_token: CHANGE-ME-TELEGRAM-TOKEN
+    chat_id: "123456"
+  slack:
+    enabled: true
+    webhook_url: "https://hooks.slack.com/services/CHANGE-ME"
+  discord:
+    enabled: false
+    webhook_url: "https://discord.com/api/webhooks/CHANGE-ME"
+
+# ---- DuckDNS (optionnel ; sinon hostnames nip.io par défaut) ----
+# duckdns_token: "CHANGE-ME-DUCKDNS-TOKEN"
+# duckdns_domains: "tioukh,grafana-tioukh"

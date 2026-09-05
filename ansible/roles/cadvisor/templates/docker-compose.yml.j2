@@ -1,0 +1,27 @@
+# cAdvisor — exposé uniquement sur le réseau interne `monitoring`.
+services:
+  cadvisor:
+    image: "{{ images.cadvisor }}"
+    container_name: cadvisor
+    restart: unless-stopped
+    networks:
+      - monitoring
+    expose:
+      - "8080"
+    command:
+      - --port=8080
+      - --housekeeping_interval=10s
+      - --docker_only=true
+    environment:
+      # Le healthcheck embarqué utilise cette URL (sinon il sonde le mauvais port).
+      CADVISOR_HEALTHCHECK_URL: "http://localhost:8080/"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+
+networks:
+  monitoring:
+    external: true

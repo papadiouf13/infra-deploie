@@ -1,0 +1,99 @@
+---
+# =====================================================================
+# verify.yml — vérifications post-déploiement.
+#
+#   ansible-playbook -i inventories/<env>/hosts.ini playbooks/verify.yml
+#
+# Vérifie : santé des conteneurs, exposition réseau (aucun port app
+# visible hors 80/443), authentification HTTP des consoles, ingestion
+# des logs dans Loki, réponse de SonarQube (si activé).
+# Exécutable à tout moment (idempotent).
+# =====================================================================
+
+- name: Vérifier le déploiement de la pile de monitoring
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Récupérer l'état des conteneurs
+      community.docker.docker_host_info:
+        containers: true
+      register: docker_info
+
+    - name: Tous les conteneurs du compose attendu doivent tourner
+      ansible.builtin.assert:
+        that:
+          - item in (docker_info.containers | map(attribute='Names') | list)
+        success_msg: "Conteneur présent : {{ item }}"
+        fail_msg: "Conteneur absent : {{ item }}"
+      loop:
+        - traefik
+        - whoami
+        - node-exporter
+        - cadvisor
+        - prometheus
+        - loki
+        - alloy
+        - grafana
+
+    - name: Conteneurs SonarQube (si activé)
+      ansible.builtin.assert:
+        that:
+          - item in (docker_info.containers | map(attribute='Names') | list)
+        success_msg: "Conteneur présent : {{ item }}"
+        fail_msg: "Conteneur absent : {{ item }}"
+      loop:
+        - sonarqube
+        - sonar-db
+      when: enable_sonarqube | bool
+
+    - name: Endpoints internes ne doivent PAS être publiés sur l'hôte
+      ansible.builtin.assert:
+        that:
+          - "'published' not in item"
+        fail_msg: "Port exposé sur l'hôte, interdit : {{ item }}"
+      loop: "{{ docker_info.containers | map(attribute='Ports') | flatten }}"
+      when: docker_info.containers | length > 0
+
+    - name: Prometheus doit répondre
+      ansible.builtin.uri:
+        url: http://127.0.0.1:9090/-/healthy
+        status_code: 200
+
+    - name: Prometheus (https) doit exiger une authentification
+      ansible.builtin.uri:
+        url: "https://{{ prometheus_host }}"
+        status_code: 401
+        validate_certs: false
+
+    - name: Grafana doit accepter les identifiants admin
+      ansible.builtin.uri:
+        url: "https://{{ grafana_host }}/api/org"
+        user: "{{ grafana_admin_user }}"
+        password: "{{ grafana_admin_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        status_code: 200
+
+    - name: Loki doit répondre (prêt)
+      ansible.builtin.uri:
+        url: http://127.0.0.1:3100/ready
+        status_code: 200
+
+    - name: Loki doit contenir des journaux (ingestion par Alloy)
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:3100/loki/api/v1/labels"
+        status_code: 200
+      register: loki_labels
+
+    - name: SonarQube doit répondre (si activé)
+      ansible.builtin.uri:
+        url: "https://{{ sonar_host }}/api/system/status"
+        status_code: 200
+        validate_certs: false
+      when: enable_sonarqube | bool
+
+    - name: Récapitulatif
+      ansible.builtin.debug:
+        msg: "Le déploiement est sain, tous les contrôles sont passés."

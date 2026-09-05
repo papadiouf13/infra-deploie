@@ -1,0 +1,65 @@
+---
+# =====================================================================
+# TRAEFIK — reverse proxy / TLS (Let's Encrypt ou autosigné) + whoami.
+# Seul conteneur autorisé à publier des ports sur l'hôte (80/443).
+# L'API (8080) et les métriques (8082) ne sont pas publiées : scraping
+# via le réseau interne `monitoring`.
+# =====================================================================
+
+- name: Traefik - répertoires
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - /opt/traefik
+    - /opt/traefik/logs
+
+- name: Traefik - configuration statique
+  ansible.builtin.template:
+    src: traefik.yml.j2
+    dest: /opt/traefik/traefik.yml
+    mode: "0644"
+  notify: Redémarrer Traefik
+
+- name: Traefik - configuration dynamique (middlewares partagés)
+  ansible.builtin.template:
+    src: dynamic.yml.j2
+    dest: /opt/traefik/dynamic.yml
+    mode: "0644"
+  notify: Redémarrer Traefik
+
+- name: Traefik - fichier acme.json (certificats Let's Encrypt)
+  ansible.builtin.file:
+    path: /opt/traefik/acme.json
+    state: touch
+    mode: "0600"
+
+- name: Traefik - docker-compose (traefik + whoami)
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/traefik/docker-compose.yml
+    mode: "0644"
+  notify: Redémarrer Traefik
+
+- name: Traefik - démarrer / mettre à jour les services
+  community.docker.docker_compose_v2:
+    project_src: /opt/traefik
+    state: present
+    pull: missing
+
+- name: Traefik - attendre l'écoute HTTPS (443)
+  ansible.builtin.wait_for:
+    port: 443
+    state: started
+    delay: 5
+    timeout: 120
+
+- name: Traefik - attendre l'API interne (healthcheck)
+  ansible.builtin.uri:
+    url: http://127.0.0.1:8080/api/rawdata
+    status_code: 200
+  register: traefik_api
+  until: traefik_api.status == 200
+  retries: 10
+  delay: 5
