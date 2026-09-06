@@ -85,7 +85,8 @@
 
     - name: Récupérer l'IP de Traefik sur le réseau proxy
       ansible.builtin.shell:
-        cmd: docker inspect traefik --format '{{ (index .NetworkSettings.Networks "proxy").IPAddress }}'
+        cmd: >-
+          docker inspect traefik --format '{% raw %}{{ (index .NetworkSettings.Networks "proxy").IPAddress }}{% endraw %}'
       register: traefik_ip
       changed_when: false
 
