@@ -61,7 +61,7 @@ docker_networks:
 
 # ---- Versions des images (épinglées ; ajustables) ----
 images:
-  traefik: "traefik:v3.5.5"
+  traefik: "traefik:v3.7.13"
   node_exporter: "prom/node-exporter:v1.8.2"
   cadvisor: "gcr.io/cadvisor/cadvisor:v0.49.1"
   prometheus: "prom/prometheus:v2.54.1"
