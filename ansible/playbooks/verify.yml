@@ -66,8 +66,10 @@
 
     - name: Collecter les ports publiés sur l'hôte
       ansible.builtin.set_fact:
-        published_ports: "{{ (docker_info.containers | map(attribute='Ports') | flatten
-                             | map(attribute='PublicPort') | select('ne', none) | select('gt', 0) | list) }}"
+        published_ports: "{{ docker_info.containers | map(attribute='Ports') | flatten
+                             | selectattr('PublicPort', 'defined')
+                             | selectattr('PublicPort', 'gt', 0)
+                             | map(attribute='PublicPort') | list }}"
 
     - name: Seuls les ports 80/443 (Traefik) peuvent être publiés
       ansible.builtin.assert:
