@@ -6,7 +6,8 @@ services:
     image: "{{ images.alloy }}"
     container_name: alloy
     restart: unless-stopped
-    user: "{{ alloy_uid }}:{{ alloy_uid }}"
+    # Root requis : création du stockage /var/lib/alloy/data + lecture des
+    # logs système (root:adm 640) — socket Docker et /var/log montés en ro.
     networks:
       - monitoring
     expose:
