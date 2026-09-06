@@ -55,11 +55,13 @@
     delay: 5
     timeout: 120
 
-- name: Traefik - attendre l'API interne (healthcheck)
+- name: Traefik - attendre le routage HTTPS (whoami)
   ansible.builtin.uri:
-    url: http://127.0.0.1:8080/api/rawdata
+    url: "https://{{ whoami_host }}/whoami"
+    validate_certs: false
+    timeout: 15
     status_code: 200
-  register: traefik_api
-  until: traefik_api.status == 200
+  register: traefik_route
+  until: traefik_route.status == 200
   retries: 10
   delay: 5
