@@ -36,11 +36,11 @@
     state: present
     pull: missing
 
-- name: Prometheus - attendre le endpoint de santé
-  ansible.builtin.uri:
-    url: http://127.0.0.1:9090/-/healthy
-    status_code: 200
+- name: Prometheus - vérifier l'endpoint de santé (réseau monitoring)
+  ansible.builtin.command:
+    cmd: docker run --rm --network monitoring curlimages/curl:8.7.1 -fs http://prometheus:9090/-/healthy
   register: prom_ready
-  until: prom_ready.status == 200
+  until: prom_ready.rc == 0
   retries: 15
   delay: 5
+  changed_when: false
