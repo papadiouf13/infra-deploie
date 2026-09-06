@@ -52,6 +52,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.sonar.rule=Host(`{{ sonar_host }}`)"
       - "traefik.http.routers.sonar.entrypoints=websecure"
+      - "traefik.http.routers.sonar.tls=true"
       - "traefik.http.routers.sonar.service=sonar"
 {% if traefik_cert_type == 'letsencrypt' %}
       - "traefik.http.routers.sonar.tls.certresolver=letsencrypt"

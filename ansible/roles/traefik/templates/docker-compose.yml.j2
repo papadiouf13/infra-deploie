@@ -23,6 +23,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.traefik.rule=Host(`{{ traefik_host }}`)"
       - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls=true"
       - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.routers.traefik.middlewares=basic-auth-traefik@file,allowlist-admin@file"
 {% if traefik_cert_type == 'letsencrypt' %}
@@ -42,6 +43,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.whoami.rule=Host(`{{ whoami_host }}`)"
       - "traefik.http.routers.whoami.entrypoints=websecure"
+      - "traefik.http.routers.whoami.tls=true"
       - "traefik.http.services.whoami.loadbalancer.server.port=80"
 {% if traefik_cert_type == 'letsencrypt' %}
       - "traefik.http.routers.whoami.tls.certresolver=letsencrypt"

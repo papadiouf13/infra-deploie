@@ -46,6 +46,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.grafana.rule=Host(`{{ grafana_host }}`)"
       - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.tls=true"
       - "traefik.http.routers.grafana.service=grafana"
 {% if traefik_cert_type == 'letsencrypt' %}
       - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
