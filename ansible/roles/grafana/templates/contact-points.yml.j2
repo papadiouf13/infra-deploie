@@ -20,7 +20,7 @@ contactPoints:
 {% if alerting.slack.enabled %}
       - uid: cp-slack
         type: slack
-        secureSettings:
+        settings:
           url: "{{ alerting.slack.webhook_url }}"
         disableResolveMessage: false
 {% endif %}
