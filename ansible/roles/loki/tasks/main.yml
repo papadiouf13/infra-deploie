@@ -34,11 +34,11 @@
     state: present
     pull: missing
 
-- name: Loki - attendre que le service réponde
-  ansible.builtin.uri:
-    url: http://127.0.0.1:3100/ready
-    status_code: 200
+- name: Loki - vérifier que le service répond (réseau monitoring)
+  ansible.builtin.command:
+    cmd: docker run --rm --network monitoring curlimages/curl:8.7.1 -fs http://loki:3100/ready
   register: loki_ready
-  until: loki_ready.status == 200
+  until: loki_ready.rc == 0
   retries: 15
   delay: 5
+  changed_when: false

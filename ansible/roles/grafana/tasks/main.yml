@@ -77,14 +77,14 @@
     state: present
     pull: missing
 
-- name: Grafana - attendre que le service soit prêt (HTTP interne)
-  ansible.builtin.uri:
-    url: http://127.0.0.1:3000/api/health
-    status_code: 200
+- name: Grafana - vérifier que le service est prêt (réseau proxy)
+  ansible.builtin.command:
+    cmd: docker run --rm --network proxy curlimages/curl:8.7.1 -fs http://grafana:3000/api/health
   register: grafana_health
-  until: grafana_health.status == 200
+  until: grafana_health.rc == 0
   retries: 20
   delay: 5
+  changed_when: false
 
 - name: Grafana - vérifier l'accès authentifié via Traefik (HTTPS)
   ansible.builtin.uri:
