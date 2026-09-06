@@ -40,7 +40,7 @@
     - name: Tous les conteneurs du compose attendu doivent tourner
       ansible.builtin.assert:
         that:
-          - item in (docker_info.containers | map(attribute='Names') | list)
+          - item in (docker_info.containers | map(attribute='Names') | flatten | map('regex_replace', '^/', '') | list)
         success_msg: "Conteneur présent : {{ item }}"
         fail_msg: "Conteneur absent : {{ item }}"
       loop:
@@ -56,7 +56,7 @@
     - name: Conteneurs SonarQube (si activé)
       ansible.builtin.assert:
         that:
-          - item in (docker_info.containers | map(attribute='Names') | list)
+          - item in (docker_info.containers | map(attribute='Names') | flatten | map('regex_replace', '^/', '') | list)
         success_msg: "Conteneur présent : {{ item }}"
         fail_msg: "Conteneur absent : {{ item }}"
       loop:
@@ -67,7 +67,7 @@
     - name: Collecter les ports publiés sur l'hôte
       ansible.builtin.set_fact:
         published_ports: "{{ (docker_info.containers | map(attribute='Ports') | flatten
-                             | map(attribute='PublishedPort') | select('ne', none) | select('gt', 0) | list) }}"
+                             | map(attribute='PublicPort') | select('ne', none) | select('gt', 0) | list) }}"
 
     - name: Seuls les ports 80/443 (Traefik) peuvent être publiés
       ansible.builtin.assert:
