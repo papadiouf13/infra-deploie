@@ -72,12 +72,12 @@ inventory: tf-select
 	@grep -E '^(dev|prod) ' $(INV_TPL)
 
 configure:
-	ansible-playbook -i $(INV_TPL) $(PLAYBOOK) $(VAULT_ARGS)
+	cd $(ANSIBLE_DIR) && ansible-playbook -i inventories/$(ENV)/hosts.ini playbooks/site.yml $(VAULT_ARGS)
 
 deploy: apply inventory configure
 
 verify:
-	ansible-playbook -i $(INV_TPL) $(VERIFY) $(VAULT_ARGS)
+	cd $(ANSIBLE_DIR) && ansible-playbook -i inventories/$(ENV)/hosts.ini playbooks/verify.yml $(VAULT_ARGS)
 
 destroy: preflight tf-select
 	@read -r -p "Confirmer la destruction de l'infra '$(ENV)' ? [y/N] " ans; \
