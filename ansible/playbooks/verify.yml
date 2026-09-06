@@ -15,6 +15,22 @@
   become: true
   gather_facts: false
 
+  pre_tasks:
+    - name: Variables partagées (group_vars/all.yml)
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../group_vars/all.yml"
+
+    - name: Secrets (group_vars/vault.yml)
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../group_vars/vault.yml"
+      no_log: true
+
+    - name: Variables d'environnement (group_vars/{{ env }}.yml)
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../group_vars/{{ env }}.yml"
+      vars:
+        env: "{{ 'dev' if 'dev' in group_names else 'prod' }}"
+
   tasks:
     - name: Récupérer l'état des conteneurs
       community.docker.docker_host_info:

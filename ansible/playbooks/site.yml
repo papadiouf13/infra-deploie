@@ -21,7 +21,22 @@
   gather_facts: true
 
   pre_tasks:
-    - name: Prétâche - disponibilité de la variable enable_sonarqube
+    - name: Variables partagées (group_vars/all.yml)
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../group_vars/all.yml"
+
+    - name: Secrets (group_vars/vault.yml)
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../group_vars/vault.yml"
+      no_log: true
+
+    - name: Variables d'environnement (group_vars/{{ env }}.yml)
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../group_vars/{{ env }}.yml"
+      vars:
+        env: "{{ 'dev' if 'dev' in group_names else 'prod' }}"
+
+    - name: Prétâche - disponibilité des variables
       ansible.builtin.assert:
         that:
           - enable_sonarqube is defined
