@@ -59,7 +59,7 @@ loki.source.file "system_logs" {
 
 // ---- Access logs Traefik (JSON) ----
 loki.source.file "traefik_access" {
-  targets    = [{ "__path__" = "/var/log/traefik/access.log" }]
+  targets    = [{ "__path__" = "/logs/traefik/access.log" }]
   forward_to = [loki.process.traefik.receiver]
 }
 

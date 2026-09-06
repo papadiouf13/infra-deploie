@@ -19,7 +19,9 @@ services:
       # Logs système (syslog, auth) — lecture seule.
       - /var/log:/var/log:ro
       # Access logs de Traefik (format json) — lecture seule.
-      - /opt/traefik/logs:/var/log/traefik:ro
+      # Hors de /var/log : runc ne peut pas créer le point de montage /
+      # var/log/traefik à travers le bind ro /var/log (EROFS).
+      - /opt/traefik/logs:/logs/traefik:ro
     command:
       - run
       - --server.http.listen-addr=0.0.0.0:12345
