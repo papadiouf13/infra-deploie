@@ -39,7 +39,9 @@
   ansible.builtin.template:
     src: contact-points.yml.j2
     dest: /opt/grafana/provisioning/alerting/contact-points.yml
-    mode: "0600"
+    mode: "0640"
+    owner: "{{ grafana_uid }}"
+    group: "{{ grafana_uid }}"
   notify: Redémarrer Grafana
 
 - name: Grafana - politiques de routage des alertes
