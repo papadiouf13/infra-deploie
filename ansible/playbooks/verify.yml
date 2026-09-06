@@ -48,12 +48,17 @@
         - sonar-db
       when: enable_sonarqube | bool
 
-    - name: Endpoints internes ne doivent PAS être publiés sur l'hôte
+    - name: Collecter les ports publiés sur l'hôte
+      ansible.builtin.set_fact:
+        published_ports: "{{ (docker_info.containers | map(attribute='Ports') | flatten
+                             | map(attribute='PublishedPort') | select('ne', none) | select('gt', 0) | list) }}"
+
+    - name: Seuls les ports 80/443 (Traefik) peuvent être publiés
       ansible.builtin.assert:
         that:
-          - "'published' not in item"
-        fail_msg: "Port exposé sur l'hôte, interdit : {{ item }}"
-      loop: "{{ docker_info.containers | map(attribute='Ports') | flatten }}"
+          - published_ports | difference([80, 443]) | length == 0
+        success_msg: "Aucun port applicatif publié (seuls 80/443 pour Traefik)."
+        fail_msg: "Port(s) publié(s) non autorisé(s) : {{ published_ports | difference([80, 443]) }} (attendu : 80/443 Traefik uniquement)"
       when: docker_info.containers | length > 0
 
     - name: Prometheus doit répondre

@@ -31,12 +31,12 @@
     name: "{{ timezone }}"
 
 # ----------------------------- UFW -----------------------------
-- name: UFW - politique par defaut : refuser les entrées
+- name: "UFW - politique par défaut : refuser les entrées"
   community.general.ufw:
     direction: incoming
     policy: deny
 
-- name: UFW - politique par defaut : autoriser les sorties
+- name: "UFW - politique par défaut : autoriser les sorties"
   community.general.ufw:
     direction: outgoing
     policy: allow
