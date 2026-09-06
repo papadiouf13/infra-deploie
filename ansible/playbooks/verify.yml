@@ -80,41 +80,31 @@
       when: docker_info.containers | length > 0
 
     - name: Prometheus doit répondre
-      ansible.builtin.uri:
-        url: http://127.0.0.1:9090/-/healthy
-        status_code: 200
+      ansible.builtin.command:
+        cmd: docker run --rm --network monitoring curlimages/curl:8.7.1 -fs http://prometheus:9090/-/healthy
 
     - name: Prometheus (https) doit exiger une authentification
-      ansible.builtin.uri:
-        url: "https://{{ prometheus_host }}"
-        status_code: 401
-        validate_certs: false
+      ansible.builtin.shell:
+        cmd: docker run --rm --network proxy curlimages/curl:8.7.1 -fs -o /dev/null -w '%{http_code}' https://{{ prometheus_host }}
+      register: prom_auth
+      changed_when: false
+      failed_when: prom_auth.stdout != '401'
 
     - name: Grafana doit accepter les identifiants admin
-      ansible.builtin.uri:
-        url: "https://{{ grafana_host }}/api/org"
-        user: "{{ grafana_admin_user }}"
-        password: "{{ grafana_admin_password }}"
-        force_basic_auth: true
-        validate_certs: false
-        status_code: 200
+      ansible.builtin.shell:
+        cmd: docker run --rm --network proxy curlimages/curl:8.7.1 -fs -u '{{ grafana_admin_user }}:{{ grafana_admin_password }}' https://{{ grafana_host }}/api/org
 
     - name: Loki doit répondre (prêt)
-      ansible.builtin.uri:
-        url: http://127.0.0.1:3100/ready
-        status_code: 200
+      ansible.builtin.command:
+        cmd: docker run --rm --network monitoring curlimages/curl:8.7.1 -fs http://loki:3100/ready
 
     - name: Loki doit contenir des journaux (ingestion par Alloy)
-      ansible.builtin.uri:
-        url: "http://127.0.0.1:3100/loki/api/v1/labels"
-        status_code: 200
-      register: loki_labels
+      ansible.builtin.command:
+        cmd: docker run --rm --network monitoring curlimages/curl:8.7.1 -fs http://loki:3100/loki/api/v1/labels
 
     - name: SonarQube doit répondre (si activé)
-      ansible.builtin.uri:
-        url: "https://{{ sonar_host }}/api/system/status"
-        status_code: 200
-        validate_certs: false
+      ansible.builtin.shell:
+        cmd: docker run --rm --network proxy curlimages/curl:8.7.1 -fs https://{{ sonar_host }}/api/system/status
       when: enable_sonarqube | bool
 
     - name: Récapitulatif
