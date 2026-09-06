@@ -20,8 +20,6 @@ contactPoints:
 {% if alerting.slack.enabled %}
       - uid: cp-slack
         type: slack
-        settings:
-          recipient: "{{ alerting.slack.channel | default('#infra-alerts') }}"
         secureSettings:
           url: "{{ alerting.slack.webhook_url }}"
         disableResolveMessage: false
