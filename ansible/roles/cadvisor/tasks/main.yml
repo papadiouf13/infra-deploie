@@ -22,11 +22,11 @@
     state: present
     pull: missing
 
-- name: cAdvisor - attendre que les métriques répondent
-  ansible.builtin.uri:
-    url: http://127.0.0.1:8080/metrics
-    status_code: 200
+- name: cAdvisor - vérifier que les métriques répondent (réseau monitoring)
+  ansible.builtin.command:
+    cmd: docker run --rm --network monitoring curlimages/curl:8.7.1 -fs http://cadvisor:8080/metrics
   register: ca_metrics
-  until: ca_metrics.status == 200
+  until: ca_metrics.rc == 0
   retries: 15
   delay: 5
+  changed_when: false

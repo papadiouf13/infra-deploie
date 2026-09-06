@@ -22,11 +22,11 @@
     state: present
     pull: missing
 
-- name: Node Exporter - attendre que les métriques répondent
-  ansible.builtin.uri:
-    url: http://127.0.0.1:9100/metrics
-    status_code: 200
+- name: Node Exporter - vérifier que les métriques répondent (réseau monitoring)
+  ansible.builtin.command:
+    cmd: docker run --rm --network monitoring curlimages/curl:8.7.1 -fs http://node-exporter:9100/metrics
   register: ne_metrics
-  until: ne_metrics.status == 200
+  until: ne_metrics.rc == 0
   retries: 10
   delay: 3
+  changed_when: false
