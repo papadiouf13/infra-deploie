@@ -14,7 +14,6 @@ contactPoints:
         type: telegram
         settings:
           chid: "{{ alerting.telegram.chat_id }}"
-        secureSettings:
           bottoken: "{{ alerting.telegram.bot_token }}"
         disableResolveMessage: false
 {% endif %}
