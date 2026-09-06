@@ -32,7 +32,7 @@ services:
       - "traefik.http.routers.prometheus.rule=Host(`{{ prometheus_host }}`)"
       - "traefik.http.routers.prometheus.entrypoints=websecure"
       - "traefik.http.routers.prometheus.service=prometheus"
-      - "traefik.http.routers.prometheus.middlewares=basic-auth-prom,allowlist-admin"
+      - "traefik.http.routers.prometheus.middlewares=basic-auth-prom@file,allowlist-admin@file"
 {% if traefik_cert_type == 'letsencrypt' %}
       - "traefik.http.routers.prometheus.tls.certresolver=letsencrypt"
 {% endif %}

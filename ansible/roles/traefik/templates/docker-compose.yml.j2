@@ -24,7 +24,7 @@ services:
       - "traefik.http.routers.traefik.rule=Host(`{{ traefik_host }}`)"
       - "traefik.http.routers.traefik.entrypoints=websecure"
       - "traefik.http.routers.traefik.service=api@internal"
-      - "traefik.http.routers.traefik.middlewares=basic-auth-traefik,allowlist-admin"
+      - "traefik.http.routers.traefik.middlewares=basic-auth-traefik@file,allowlist-admin@file"
 {% if traefik_cert_type == 'letsencrypt' %}
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
 {% endif %}
