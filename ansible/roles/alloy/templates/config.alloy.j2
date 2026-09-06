@@ -31,7 +31,7 @@ discovery.relabel "containers" {
 }
 
 // Acheminement commun vers Loki.
-loki.write "receiver" {
+loki.write "default" {
   endpoint {
     url = "http://loki:3100/loki/api/v1/push"
   }
@@ -45,7 +45,7 @@ loki.write "receiver" {
 loki.source.docker "docker_logs" {
   host       = "unix:///var/run/docker.sock"
   targets    = discovery.relabel.containers.output
-  forward_to = [loki.write.receiver]
+  forward_to = [loki.write.default.receiver]
 }
 
 // ---- Logs système (/var/log) ----
@@ -54,7 +54,7 @@ loki.source.file "system_logs" {
     { "__path__" = "/var/log/syslog" },
     { "__path__" = "/var/log/auth.log" },
   ]
-  forward_to = [loki.write.receiver]
+  forward_to = [loki.write.default.receiver]
 }
 
 // ---- Access logs Traefik (JSON) ----
@@ -74,5 +74,5 @@ loki.process "traefik" {
       proto       = "request_protocol",
     }
   }
-  forward_to = [loki.write.receiver]
+  forward_to = [loki.write.default.receiver]
 }
