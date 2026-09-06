@@ -13,9 +13,9 @@ contactPoints:
       - uid: cp-telegram
         type: telegram
         settings:
-          chatid: "{{ alerting.telegram.chat_id }}"
+          chid: "{{ alerting.telegram.chat_id }}"
         secureSettings:
-          btoken: "{{ alerting.telegram.bot_token }}"
+          bottoken: "{{ alerting.telegram.bot_token }}"
         disableResolveMessage: false
 {% endif %}
 {% if alerting.slack.enabled %}
