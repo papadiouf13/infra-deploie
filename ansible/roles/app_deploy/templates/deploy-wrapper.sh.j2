@@ -1,0 +1,61 @@
+#!/bin/sh
+# =====================================================================
+# deploy-wrapper.sh — enveloppe la clé de déploiement CI/CD.
+#
+# La clé publique dans authorized_keys est restreinte avec :
+#   command="{{ deploy_dir }}/deploy-wrapper.sh",no-pty,no-agent-forwarding,
+#   no-port-forwarding,no-X11-forwarding,no-user-rc
+#
+# Commandes autorisées STRICTEMENT :
+#   deploy.sh <app> [tag]        — déploiement d'une application
+#   put <app> <fichier>          — upload d'un fichier (stdin) vers
+#                                  {{ app_root }}/<app>/<fichier>
+# Toute autre commande est rejetée (journalisée dans syslog).
+# =====================================================================
+set -eu
+
+readonly APP_ROOT="{{ app_root }}"
+readonly DEPLOY_DIR="{{ deploy_dir }}"
+
+command -v logger >/dev/null 2>&1 && logger -t deploy-wrapper "commande reçue : ${SSH_ORIGINAL_COMMAND:-}"
+
+cmd="${SSH_ORIGINAL_COMMAND:-}"
+
+case "$cmd" in
+  "deploy.sh "*)
+    set -- $cmd
+    app="$2"
+    tag="${3:-}"
+    [ -n "$app" ] || { echo "app manquante" >&2; exit 1; }
+    case "$app" in
+      *[!a-zA-Z0-9_-]*) echo "nom d'app invalide : $app" >&2; exit 1;;
+    esac
+    exec "$DEPLOY_DIR/deploy.sh" "$app" "$tag"
+    ;;
+  "put "*)
+    set -- $cmd
+    app="$2"
+    file="$3"
+    [ -n "$app" ] && [ -n "$file" ] || { echo "usage: put <app> <fichier>" >&2; exit 1; }
+    case "$app" in
+      *[!a-zA-Z0-9_-]*) echo "nom d'app invalide : $app" >&2; exit 1;;
+    esac
+    case "$file" in
+      docker-compose.yml|docker-compose.yaml|*.env|migrate.sh|.env.example)
+        ;;
+      *)
+        echo "fichier non autorisé : $file" >&2
+        exit 1
+        ;;
+    esac
+    mkdir -p "$APP_ROOT/$app"
+    cat > "$APP_ROOT/$app/$file"
+    chmod 0644 "$APP_ROOT/$app/$file"
+    echo "OK put $app/$file ($(wc -c < "$APP_ROOT/$app/$file") octets)" >&2
+    ;;
+  *)
+    echo "commande non autorisée" >&2
+    logger -t deploy-wrapper "REJETÉE : $cmd"
+    exit 1
+    ;;
+esac

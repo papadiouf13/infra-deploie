@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# =====================================================================
+# scan-containers.sh — scanne les images des conteneurs actifs avec Trivy.
+# Une ligne JSON par image est ajoutée à /opt/trivy/reports/trivy.jsonl
+# (relue par Alloy -> Loki -> Grafana).
+# Exécuté par le timer systemd « trivy-scan » (défaut : 03:05 UTC).
+# Généré par Ansible (rôle trivy).
+# =====================================================================
+set -euo pipefail
+
+TRIVY_IMAGE="{{ trivy_image }}"
+SEVERITIES="{{ trivy_severities }}"
+IGNORE_UNFIXED="{{ trivy_ignore_unfixed | string | lower }}"
+CACHE_DIR="{{ trivy_cache_dir }}"
+REPORT_DIR="{{ trivy_report_dir }}"
+REPORT_FILE="${REPORT_DIR}/trivy.jsonl"
+
+log() {
+  echo "[scan-trivy] $(date -u +%Y-%m-%dT%H:%M:%SZ) $*" >&2
+}
+
+log "Démarrage du scan Trivy (sévérités : ${SEVERITIES})"
+
+# 1) La base de vulnérabilités est mise à jour AUTOMATIQUEMENT par Trivy au
+#    moment du scan (cache partagé -> téléchargement incrémental).
+
+# 2) Images des conteneurs en cours d'exécution (dédupliquées).
+mapfile -t IMAGES < <(docker ps --format '{% raw %}{{.Image}}{% endraw %}' | sort -u)
+if [[ -z ${IMAGES[*]} ]]; then
+  log "Aucun conteneur à scanner"
+  exit 0
+fi
+TOTAL=0
+for _ignore in "${IMAGES[@]}"; do TOTAL=$((TOTAL + 1)); done
+
+# 3) Arguments optionnels.
+EXTRA=()
+if [[ "${IGNORE_UNFIXED}" == "true" ]]; then
+  EXTRA+=(--ignore-unfixed)
+fi
+
+# 4) Scan de chaque image (conteneur éphémère, socket Docker monté en ro).
+for IMG in "${IMAGES[@]}"; do
+  log "Scan de ${IMG}"
+  CONTAINERS=$(docker ps --filter "ancestor=${IMG}" --format '{% raw %}{{.Names}}{% endraw %}' | paste -sd, -)
+
+  OUT=$(docker run --rm \
+        -v "${CACHE_DIR}:/cache" \
+        -v /var/run/docker.sock:/var/run/docker.sock:ro \
+        "${TRIVY_IMAGE}" --cache-dir /cache image \
+        --severity "${SEVERITIES}" "${EXTRA[@]}" \
+        --format json "${IMG}" 2>/dev/null || true)
+
+  COUNTS=$(printf '%s' "${OUT}" | python3 -c '
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    crit = high = 0
+    for r in data.get("Results", []):
+        for v in r.get("Vulnerabilities", []):
+            s = v.get("Severity", "")
+            if s == "CRITICAL":
+                crit += 1
+            elif s == "HIGH":
+                high += 1
+    print(f"{crit} {high}")
+except Exception:
+    print("0 0")')
+
+  CRIT=${COUNTS%% *}
+  HIGH=${COUNTS##* }
+  printf '{"ts":"%s","container":"%s","image":"%s","critical":%s,"high":%s}\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${CONTAINERS}" "${IMG}" "${CRIT}" "${HIGH}" >> "${REPORT_FILE}"
+  log "  ${IMG} -> CRITICAL=${CRIT} HIGH=${HIGH}"
+done
+
+log "Scan terminé (${TOTAL} image(s))"

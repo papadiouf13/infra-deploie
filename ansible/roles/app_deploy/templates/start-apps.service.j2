@@ -1,0 +1,13 @@
+[Unit]
+Description=Start all deployed applications (docker compose) at boot
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart={{ deploy_dir }}/start-apps.sh
+RemainAfterExit=yes
+User={{ app_deploy_user }}
+
+[Install]
+WantedBy=multi-user.target

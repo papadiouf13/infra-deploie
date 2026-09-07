@@ -7,7 +7,7 @@
   "editable": true,
   "refresh": "30s",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "time": { "from": "now-6h", "to": "now" },
   "templating": {
     "list": [
@@ -57,11 +57,35 @@
     {
       "id": 2,
       "type": "stat",
-      "title": "Conteneurs détectés",
+      "title": "Conteneurs UP",
       "gridPos": { "h": 4, "w": 3, "x": 3, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "count(container_cpu_usage_seconds_total{environment=~\"$env\", server=~\"$server\"})", "legendFormat": "containers", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" } }
+        { "expr": "sum(engine_daemon_container_states_containers{state=\"running\", environment=~\"$env\"})", "legendFormat": "running", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" } }
+      ],
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 90 } ] } }, "overrides": [] }
+    },
+    {
+      "id": 9,
+      "type": "stat",
+      "title": "Conteneurs DOWN",
+      "gridPos": { "h": 4, "w": 3, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum(engine_daemon_container_states_containers{state=\"stopped\", environment=~\"$env\"})", "legendFormat": "stopped", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" } }
+      ],
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } }, "overrides": [] }
+    },
+    {
+      "id": 10,
+      "type": "stat",
+      "title": "Conteneurs TOTAL",
+      "gridPos": { "h": 4, "w": 3, "x": 9, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum(engine_daemon_container_states_containers{environment=~\"$env\"})", "legendFormat": "total", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" } }
       ],
       "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
       "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 90 } ] } }, "overrides": [] }
@@ -70,7 +94,7 @@
       "id": 3,
       "type": "stat",
       "title": "Services indisponibles",
-      "gridPos": { "h": 4, "w": 3, "x": 6, "y": 0 },
+      "gridPos": { "h": 4, "w": 3, "x": 12, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         { "expr": "count(up{environment=~\"$env\", server=~\"$server\"} == 0)", "legendFormat": "down", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" } }
@@ -82,7 +106,7 @@
       "id": 4,
       "type": "stat",
       "title": "Uptime serveur",
-      "gridPos": { "h": 4, "w": 3, "x": 9, "y": 0 },
+      "gridPos": { "h": 4, "w": 3, "x": 15, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         { "expr": "max(time() - node_boot_time_seconds{environment=~\"$env\", server=~\"$server\"})", "legendFormat": "uptime", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" } }
@@ -91,10 +115,34 @@
       "fieldConfig": { "defaults": { "unit": "s", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 90 } ] } }, "overrides": [] }
     },
     {
+      "id": 11,
+      "type": "table",
+      "title": "État des services (par cible up)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "up{environment=~\"$env\", server=~\"$server\"}", "legendFormat": "{{ job }}", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "instant": true, "format": "table" }
+      ],
+      "options": { "showHeader": true, "footer": { "show": false, "fields": "", "countRows": false } },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }, "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "filterable": true } }, "overrides": [] }
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "Alertes actives (cibles down)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "count(up{environment=~\"$env\", server=~\"$server\"} == 0)", "legendFormat": "down", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" } }
+      ],
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } }, "overrides": [] }
+    },
+    {
       "id": 5,
       "type": "timeseries",
       "title": "CPU utilisé (%)",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         { "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\", environment=~\"$env\", server=~\"$server\"}[5m])) * 100 or vector(0))", "legendFormat": "CPU", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "intervalFactor": 1 }
@@ -107,7 +155,7 @@
       "id": 6,
       "type": "timeseries",
       "title": "Mémoire utilisée (%)",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         { "expr": "(1 - node_memory_MemAvailable_bytes{environment=~\"$env\", server=~\"$server\"} / node_memory_MemTotal_bytes{environment=~\"$env\", server=~\"$server\"}) * 100", "legendFormat": "MEM", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "intervalFactor": 1 }
@@ -120,7 +168,7 @@
       "id": 7,
       "type": "timeseries",
       "title": "Requêtes Traefik (req/s)",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         { "expr": "sum(rate(traefik_service_requests_total{environment=~\"$env\", server=~\"$server\"}[5m]))", "legendFormat": "rps", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "intervalFactor": 1 }
@@ -133,7 +181,7 @@
       "id": 8,
       "type": "timeseries",
       "title": "Erreurs 5xx (req/s)",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         { "expr": "sum(rate(traefik_service_requests_total{code=~\"5..\", environment=~\"$env\", server=~\"$server\"}[5m]))", "legendFormat": "5xx", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "intervalFactor": 1 }

@@ -1,4 +1,4 @@
-{% macro alert_rule(uid, title, expr, severity='critical', for='2m', nodata='Alerting') -%}
+{%- macro alert_rule(uid, title, expr, severity='critical', for='2m', nodata='Alerting') -%}
 - uid: {{ uid }}
   title: "{{ title }}"
   for: "{{ for }}"
@@ -46,6 +46,54 @@
               type: gt
               params: [0]
 {%- endmacro %}
+{%- macro alert_rule_loki(uid, title, expr, severity='critical', for='5m', window=90000) -%}
+- uid: {{ uid }}
+  title: "{{ title }}"
+  for: "{{ for }}"
+  labels:
+    severity: {{ severity }}
+    environment: "{{ environment_name }}"
+  annotations:
+    summary: "{{ title }} ({{ environment_name }})"
+  noDataState: OK
+  execErrState: Error
+  condition: C
+  data:
+    - refId: A
+      datasourceUid: loki
+      model:
+        refId: A
+        datasource:
+          type: loki
+          uid: loki
+        expr: '{{ expr }}'
+        queryType: range
+      relativeTimeRange:
+        from: {{ window }}
+        to: 0
+    - refId: B
+      datasourceUid: __expr__
+      type: __expr__
+      model:
+        type: reduce
+        expression: A
+        reducer: sum
+        refId: B
+      relativeTimeRange:
+        from: {{ window }}
+        to: 0
+    - refId: C
+      datasourceUid: __expr__
+      type: __expr__
+      model:
+        type: threshold
+        expression: B
+        refId: C
+        conditions:
+          - evaluator:
+              type: gt
+              params: [0]
+{%- endmacro %}
 apiVersion: 1
 
 groups:
@@ -54,14 +102,14 @@ groups:
     folder: Monitoring
     interval: 1m
     rules:
-{{ alert_rule('alert-node-up', 'Node Exporter indisponible', 'up{job="node_exporter"} == 0', 'critical', '2m', 'Alerting') | indent(6, true) }}
-{{ alert_rule('alert-prometheus-up', 'Prometheus indisponible', 'up{job="prometheus"} == 0', 'critical', '2m', 'Alerting') | indent(6, true) }}
-{{ alert_rule('alert-traefik-up', 'Traefik indisponible', 'up{job="traefik"} == 0', 'critical', '2m', 'Alerting') | indent(6, true) }}
-{{ alert_rule('alert-docker-up', 'Daemon Docker indisponible', 'up{job="docker"} == 0', 'critical', '2m', 'Alerting') | indent(6, true) }}
-{{ alert_rule('alert-loki-up', 'Loki indisponible', 'up{job="loki"} == 0', 'critical', '2m', 'Alerting') | indent(6, true) }}
-{{ alert_rule('alert-grafana-up', 'Grafana indisponible', 'up{job="grafana"} == 0', 'critical', '2m', 'Alerting') | indent(6, true) }}
-{{ alert_rule('alert-alloy-up', 'Alloy indisponible', 'up{job="alloy"} == 0', 'critical', '2m', 'Alerting') | indent(6, true) }}
-{{ alert_rule('alert-cadvisor-up', 'cAdvisor indisponible', 'up{job="cadvisor"} == 0', 'warning', '5m', 'Alerting') | indent(6, true) }}
+{{ alert_rule('alert-node-up', 'Node Exporter indisponible', '(1 - up{job="node_exporter"}) == 1', 'critical', '2m', 'OK') | indent(6, true) }}
+{{ alert_rule('alert-prometheus-up', 'Prometheus indisponible', '(1 - up{job="prometheus"}) == 1', 'critical', '2m', 'OK') | indent(6, true) }}
+{{ alert_rule('alert-traefik-up', 'Traefik indisponible', '(1 - up{job="traefik"}) == 1', 'critical', '2m', 'OK') | indent(6, true) }}
+{{ alert_rule('alert-docker-up', 'Daemon Docker indisponible', '(1 - up{job="docker"}) == 1', 'critical', '2m', 'OK') | indent(6, true) }}
+{{ alert_rule('alert-loki-up', 'Loki indisponible', '(1 - up{job="loki"}) == 1', 'critical', '2m', 'OK') | indent(6, true) }}
+{{ alert_rule('alert-grafana-up', 'Grafana indisponible', '(1 - up{job="grafana"}) == 1', 'critical', '2m', 'OK') | indent(6, true) }}
+{{ alert_rule('alert-alloy-up', 'Alloy indisponible', '(1 - up{job="alloy"}) == 1', 'critical', '2m', 'OK') | indent(6, true) }}
+{{ alert_rule('alert-cadvisor-up', 'cAdvisor indisponible', '(1 - up{job="cadvisor"}) == 1', 'warning', '5m', 'OK') | indent(6, true) }}
 
   - orgId: 1
     name: ressources
@@ -73,4 +121,11 @@ groups:
 {{ alert_rule('alert-disk-warn', 'Disque root presque plein', 'node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} < (1 - ' ~ alerts.server.disk_warning / 100 ~ ')', 'warning', '10m', 'OK') | indent(6, true) }}
 {{ alert_rule('alert-disk-crit', 'Disque root saturé', 'node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} < (1 - ' ~ alerts.server.disk_critical / 100 ~ ')', 'critical', '5m', 'OK') | indent(6, true) }}
 {{ alert_rule('alert-5xx', 'Erreurs 5xx sur Traefik', 'sum by (service) (rate(traefik_service_requests_total{code=~"5.."}[5m])) > ' ~ alerts.traefik.error_5xx_pct / 100, 'warning', '5m', 'OK') | indent(6, true) }}
-{{ alert_rule('alert-latency', 'Latence p95 élevée', 'histogram_quantile(0.95, sum by (le, service) (rate(traefik_service_request_duration_seconds_bucket[5m]))) > ' ~ alerts.traefik.latency_p95_seconds, 'warning', '5m', 'OK') | indent(6, true) }}
+{{ alert_rule('alert-latency', 'Latence p95 élevée', '(histogram_quantile(0.95, sum by (le, service) (rate(traefik_service_request_duration_seconds_bucket[5m]))) > ' ~ alerts.traefik.latency_p95_seconds ~ ') and (sum by (service) (rate(traefik_service_requests_total[5m])) > ' ~ alerts.traefik.latency_min_req_s ~ ')', 'warning', '5m', 'OK') | indent(6, true) }}
+
+  - orgId: 1
+    name: securite
+    folder: Monitoring
+    interval: 1m
+    rules:
+{{ alert_rule_loki('alert-trivy-critical', 'Vulnérabilités CRITICAL sur des conteneurs (Trivy)', 'sum(count_over_time({environment=~".*", source="trivy"} | json | critical != "0" [25h]))', 'critical', '5m', 90000) | indent(6, true) }}

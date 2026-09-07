@@ -1,0 +1,11 @@
+[Unit]
+Description=Scan complet Trivy des images de conteneurs ({{ trivy_base_dir }}/scan-containers.sh)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart={{ trivy_base_dir }}/scan-containers.sh
+# Journalisation dans syslog (Alloy relit /var/log/syslog) + stderr du service.
+StandardOutput=journal
+StandardError=journal

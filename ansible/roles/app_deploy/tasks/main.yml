@@ -1,0 +1,123 @@
+---
+# =====================================================================
+# APP_DEPLOY — prépare la VM à recevoir des apps déployées par GitHub
+# Actions via une clé SSH dédiée (CI/CD).
+#
+# Ce rôle :
+#   1. Crée /opt/apps (racine des applications déployées)
+#   2. Génère une clé ed25519 dédiée CI/CD (/opt/deploy/.ssh/deploy_key)
+#   3. Restreint cette clé (wrapper) : seuls "deploy.sh <app>" et
+#      "put <app> <fichier>" sont autorisés
+#   4. Installe deploy.sh (générique) + start-apps.service (boot)
+#   5. Garantit que le réseau Docker "back" existe (external: true)
+#
+# La clé PRIVÉE doit ensuite être copiée dans le secret GitHub
+# SSH_PRIVATE_KEY : à récupérer via :
+#   ssh papa@<host> 'cat /opt/deploy/.ssh/deploy_key'
+#   2> /dev/null`" — voir les tâches ci-dessous.
+# =====================================================================
+
+- name: App deploy - répertoire racine des apps
+  ansible.builtin.file:
+    path: "{{ app_root }}"
+    state: directory
+    owner: "{{ app_deploy_user }}"
+    group: "{{ app_deploy_user }}"
+    mode: "0755"
+
+- name: App deploy - répertoire /opt/deploy/.ssh
+  ansible.builtin.file:
+    path: "{{ deploy_dir }}/.ssh"
+    state: directory
+    owner: "{{ app_deploy_user }}"
+    group: "{{ app_deploy_user }}"
+    mode: "0700"
+
+# ------------------- Clé CI/CD dédiée -------------------
+- name: App deploy - générer la clé ed25519 CI/CD (si absente)
+  ansible.builtin.command:
+    cmd: "ssh-keygen -t ed25519 -N '' -C 'papa-cicd-deploy' -f '{{ deploy_dir }}/.ssh/{{ deploy_key_name }}'"
+    creates: "{{ deploy_dir }}/.ssh/{{ deploy_key_name }}"
+
+- name: App deploy - lire la clé publique
+  ansible.builtin.command: "cat {{ deploy_dir }}/.ssh/{{ deploy_key_name }}.pub"
+  register: deploy_pub
+  changed_when: false
+
+- name: App deploy - installer la clé restreinte dans authorized_keys
+  ansible.builtin.lineinfile:
+    path: "/home/{{ app_deploy_user }}/.ssh/authorized_keys"
+    create: true
+    owner: "{{ app_deploy_user }}"
+    group: "{{ app_deploy_user }}"
+    mode: "0600"
+    regexp: "{{ deploy_key_name }}"
+    line: 'command="{{ deploy_dir }}/deploy-wrapper.sh",no-pty,no-agent-forwarding,no-port-forwarding,no-X11-forwarding,no-user-rc {{ deploy_pub.stdout }}'
+    state: present
+
+- name: App deploy - droits .ssh de l'utilisateur
+  ansible.builtin.file:
+    path: "/home/{{ app_deploy_user }}/.ssh"
+    state: directory
+    owner: "{{ app_deploy_user }}"
+    group: "{{ app_deploy_user }}"
+    mode: "0700"
+
+# ------------------- Wrapper + scripts -------------------
+- name: App deploy - wrapper restreint (deploy.sh / put)
+  ansible.builtin.template:
+    src: deploy-wrapper.sh.j2
+    dest: "{{ deploy_dir }}/deploy-wrapper.sh"
+    owner: "{{ app_deploy_user }}"
+    group: "{{ app_deploy_user }}"
+    mode: "0755"
+
+- name: App deploy - script de déploiement générique
+  ansible.builtin.template:
+    src: deploy.sh.j2
+    dest: "{{ deploy_dir }}/deploy.sh"
+    owner: "{{ app_deploy_user }}"
+    group: "{{ app_deploy_user }}"
+    mode: "0755"
+
+- name: App deploy - script de démarrage au boot
+  ansible.builtin.template:
+    src: start-apps.sh.j2
+    dest: "{{ deploy_dir }}/start-apps.sh"
+    owner: "{{ app_deploy_user }}"
+    group: "{{ app_deploy_user }}"
+    mode: "0755"
+
+- name: App deploy - service systemd start-apps
+  ansible.builtin.template:
+    src: start-apps.service.j2
+    dest: "/etc/systemd/system/start-apps.service"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: App deploy - activer start-apps au boot
+  ansible.builtin.systemd:
+    name: start-apps
+    daemon_reload: true
+    enabled: true
+
+# ------------------- Réseau Docker partagé "back" -------------------
+- name: App deploy - garantir le réseau Docker back (données/API privées)
+  community.docker.docker_network:
+    name: "{{ docker_networks.back.name }}"
+    driver: bridge
+    ipam_config:
+      - subnet: "{{ docker_networks.back.subnet }}"
+        gateway: "{{ docker_networks.back.gateway }}"
+    state: present
+  # Le réseau existe déjà (learning hub) ; si mismatch de config, on ne recrée pas.
+  ignore_errors: true
+
+# ------------------- Docker login optionnel (rate limits pull) -------------------
+- name: App deploy - docker login Docker Hub (si docker_hub_* renseignés dans le vault)
+  community.docker.docker_login:
+    username: "{{ docker_hub_user | default('') }}"
+    password: "{{ docker_hub_token | default('') }}"
+  when: docker_hub_token is defined and docker_hub_token | length > 0
+  no_log: true

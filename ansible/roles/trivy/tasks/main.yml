@@ -1,0 +1,59 @@
+---
+# =====================================================================
+# TRIVY — scan de vulnérabilités des images des conteneurs du serveur.
+#   - script hôte /opt/trivy/scan-containers.sh (systemd timer quotidien)
+#   - chaque image est scannée dans un conteneur éphémère aquasec/trivy
+#   - résultat JSONL dans /opt/trivy/reports/trivy.jsonl
+#   - Alloy relit ce fichier → Loki → dashboard Grafana + alerte.
+# Aucun conteneur persistent : rien à vérifier dans docker ps.
+# =====================================================================
+
+- name: Trivy - répertoires
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ trivy_base_dir }}"
+    - "{{ trivy_cache_dir }}"
+    - "{{ trivy_report_dir }}"
+
+- name: Trivy - script de scan
+  ansible.builtin.template:
+    src: scan-containers.sh.j2
+    dest: "{{ trivy_base_dir }}/scan-containers.sh"
+    mode: "0750"
+    owner: root
+    group: root
+
+- name: Trivy - unité systemd (service)
+  ansible.builtin.template:
+    src: trivy-scan.service.j2
+    dest: /etc/systemd/system/trivy-scan.service
+    mode: "0644"
+  notify: Recharger systemd trivy
+
+- name: Trivy - unité systemd (timer)
+  ansible.builtin.template:
+    src: trivy-scan.timer.j2
+    dest: /etc/systemd/system/trivy-scan.timer
+    mode: "0644"
+  notify: Recharger systemd trivy
+
+- name: Trivy - activer le timer
+  ansible.builtin.systemd_service:
+    name: trivy-scan.timer
+    daemon_reload: true
+    enabled: true
+    state: started
+
+- name: Trivy - vérifier que l'image trivy est tirée
+  community.docker.docker_image:
+    name: "{{ trivy_image }}"
+    source: pull
+
+- name: Trivy - validation du cache/des répertoires
+  ansible.builtin.stat:
+    path: "{{ trivy_cache_dir }}"
+  register: trivy_cache
+  failed_when: not trivy_cache.stat.isdir

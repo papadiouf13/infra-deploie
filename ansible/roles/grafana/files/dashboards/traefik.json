@@ -66,15 +66,15 @@
     },
     {
       "id": 34,
-      "type": "stat",
-      "title": "Certificats (jours restants min)",
-      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "type": "table",
+      "title": "État des services (par cible up)",
+      "gridPos": { "h": 4, "w": 8, "x": 12, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "floor((min(traefik_tls_certs_not_after{environment=~\"$env\"}) - time()) / 86400)", "legendFormat": "jours", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" } }
+        { "expr": "up{job=~\"traefik|hub-api|hub-front\"}", "legendFormat": "{{ job }}", "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "instant": true, "format": "table" }
       ],
-      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
-      "fieldConfig": { "defaults": { "unit": "d", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": 15 }, { "color": "orange", "value": 30 }, { "color": "red", "value": 45 } ] } }, "overrides": [] }
+      "options": { "showHeader": true, "footer": { "show": false, "fields": "", "countRows": false } },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }, "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "filterable": true } }, "overrides": [] }
     },
     {
       "id": 35,
@@ -114,6 +114,44 @@
       "options": { "tooltip": { "mode": "multi", "sort": "desc" } },
       "fieldConfig": { "defaults": { "unit": "reqps", "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 1, "stacking": { "mode": "none" }, "showPoints": "never" } }, "overrides": [] },
       "interval": "30s"
+    },
+    {
+      "id": 38,
+      "type": "timeseries",
+      "title": "Access log — requêtes par statut (Loki)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "expr": "sum by (status) (count_over_time({filename=\"/logs/traefik/access.log\", environment=~\"$env\"} | json | label_format status=DownstreamStatus [$__interval]))",
+          "legendFormat": "{{ status }}",
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "queryType": "range"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": { "defaults": { "unit": "reqps", "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 1, "stacking": { "mode": "normal" }, "showPoints": "never" } }, "overrides": [] },
+      "interval": "1m"
+    },
+    {
+      "id": 39,
+      "type": "timeseries",
+      "title": "Access log — requêtes par router (Loki)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "expr": "sum by (router) (count_over_time({filename=\"/logs/traefik/access.log\", environment=~\"$env\"} | json | label_format router=RouterName | router!=\"\" [$__interval]))",
+          "legendFormat": "{{ router }}",
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "queryType": "range"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": { "defaults": { "unit": "reqps", "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 1, "stacking": { "mode": "normal" }, "showPoints": "never" } }, "overrides": [] },
+      "interval": "1m"
     }
   ]
 }

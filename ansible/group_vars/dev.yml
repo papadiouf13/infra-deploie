@@ -18,3 +18,7 @@ loki_retention_hours: 72            # 3 j
 
 # ---- SonarQube désactivé en dev (RAM de 2 Go trop juste) ----
 enable_sonarqube: false
+
+# ---- Utilisateur cible du déploiement CI/CD (celui du compte SSH papa,
+#      ~/.ssh/authorized_keys et /opt/apps doivent lui appartenir) ----
+app_deploy_user: papa

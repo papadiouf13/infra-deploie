@@ -58,12 +58,19 @@ docker_networks:
     name: monitoring
     subnet: "172.30.1.0/24"
     gateway: "172.30.1.1"
+  # Réseau "back" : données & API privées des apps (jamais exposé).
+  # Créé/garanti par le rôle app_deploy ; utilisé par les apps en compose
+  # avec « external: true » (référencé aussi par le learning hub).
+  back:
+    name: back
+    subnet: "172.30.10.0/24"
+    gateway: "172.30.10.1"
 
 # ---- Versions des images (épinglées ; ajustables) ----
 images:
   traefik: "traefik:v3.7.13"
   node_exporter: "prom/node-exporter:v1.8.2"
-  cadvisor: "gcr.io/cadvisor/cadvisor:v0.49.1"
+  cadvisor: "ghcr.io/google/cadvisor:v0.60.5"
   prometheus: "prom/prometheus:v2.54.1"
   loki: "grafana/loki:3.2.2"
   alloy: "grafana/alloy:v1.3.1"
@@ -71,6 +78,17 @@ images:
   whoami: "traefik/whoami:v1.10.1"
   sonarqube: "sonarqube:lts-community"
   postgres: "postgres:16-alpine"
+  trivy: "aquasec/trivy:0.57.1"
+
+# ---- Trivy : scan de vulnérabilités des images des conteneurs du serveur ----
+# Scan quotidien (timer systemd) des images des conteneurs actifs ; résultats
+# JSONL relus par Alloy -> Loki -> dashboard + alerte Grafana.
+trivy_schedule: "*-*-* 03:05:00"
+trivy_severities: HIGH,CRITICAL
+trivy_ignore_unfixed: true
+trivy_base_dir: /opt/trivy
+trivy_cache_dir: /opt/trivy/cache
+trivy_report_dir: /opt/trivy/reports
 
 # ---- Alerting : SEUILS (configurables) ----
 alerts:
@@ -98,7 +116,8 @@ alerts:
     target_down_for: "2m"
   traefik:
     error_5xx_pct: 5                # taux d'erreurs 5xx
-    latency_p95_seconds: 1          # latence p95 en secondes
+    latency_p95_seconds: 3          # latence p95 en secondes
+    latency_min_req_s: 0.1         # trafic minimal pour fiabiliser la latence p95 (~6 req/min)
     cert_expiry_days: 14            # alerte avant expiration du certificat
 
 # ---- Contact points (Grafana Alerting) ----
@@ -149,3 +168,4 @@ grafana_dashboards:
   - docker
   - traefik
   - logs
+  - trivy

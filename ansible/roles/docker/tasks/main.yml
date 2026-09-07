@@ -59,6 +59,16 @@
     groups: docker
     append: true
 
+- name: Docker - mémoriser le GID du groupe docker (pour docker_sd Prometheus)
+  ansible.builtin.command: getent group docker
+  register: docker_group_ent
+  changed_when: false
+
+- name: Docker - exposer le GID docker en fait
+  ansible.builtin.set_fact:
+    docker_group_gid: "{{ docker_group_ent.stdout.split(':')[2] | int }}"
+  when: docker_group_ent.stdout is defined
+
 # ----------------------------- daemon.json -----------------------------
 - name: Docker - configuration daemon (rotation logs + métriques)
   ansible.builtin.template:

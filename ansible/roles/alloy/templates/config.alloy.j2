@@ -66,13 +66,20 @@ loki.source.file "traefik_access" {
 loki.process "traefik" {
   stage.json {
     expressions = {
-      status      = "downstream_status",
-      method      = "request_method",
-      duration_ms = "request_duration_ms",
-      router      = "router_name",
-      source      = "remote_addr",
-      proto       = "request_protocol",
+      status      = "DownstreamStatus",
+      method      = "RequestMethod",
+      duration_ms = "RequestDurationMs",
+      router      = "RouterName",
+      source      = "RemoteAddr",
+      proto       = "RequestProtocol",
     }
   }
+  forward_to = [loki.write.default.receiver]
+}
+
+// ---- Rapports de scan Trivy (JSONL, 1 ligne/image) ----
+// Chaque ligne : {"ts","container","image","critical","high"}.
+loki.source.file "trivy_reports" {
+  targets    = [{ "__path__" = "/opt/trivy/reports/trivy.jsonl", source = "trivy" }]
   forward_to = [loki.write.default.receiver]
 }

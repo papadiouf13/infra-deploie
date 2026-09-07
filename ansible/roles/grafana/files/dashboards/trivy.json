@@ -1,0 +1,117 @@
+{
+  "uid": "infra-trivy",
+  "title": "Trivy — vulnérabilités des conteneurs",
+  "description": "Résultats des scans Trivy quotidiens (images des conteneurs hébergés)",
+  "tags": ["trivy", "security", "monitoring"],
+  "timezone": "utc",
+  "editable": true,
+  "refresh": "5m",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-24h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "env",
+        "label": "Environnement",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": { "query": "label_values(up, environment)", "refId": "A" },
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".+",
+        "multi": false,
+        "sort": 1,
+        "hide": 0,
+        "current": { "text": "All", "value": "$__all" }
+      },
+      {
+        "name": "server",
+        "label": "Serveur",
+        "type": "query",
+        "datasource": { "type": "loki", "uid": "loki" },
+        "query": { "query": "label_values(server)", "refId": "A" },
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".+",
+        "multi": false,
+        "sort": 1,
+        "hide": 0,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 51,
+      "type": "timeseries",
+      "title": "Lignes de scan avec vulnérabilités CRITICAL (par image)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "refId": "A",
+          "expr": "sum by (image) (count_over_time({environment=~\"$env\", server=~\"$server\", source=\"trivy\"} | json | critical != \"0\" [$__interval]))",
+          "legendFormat": "{{ image }}",
+          "queryType": "range"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "thresholds" }, "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 1, "stacking": { "mode": "none" }, "showPoints": "never" } }, "overrides": [] },
+      "interval": "1h"
+    },
+    {
+      "id": 52,
+      "type": "timeseries",
+      "title": "Lignes de scan avec vulnérabilités HIGH (par image)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "refId": "A",
+          "expr": "sum by (image) (count_over_time({environment=~\"$env\", server=~\"$server\", source=\"trivy\"} | json | high != \"0\" [$__interval]))",
+          "legendFormat": "{{ image }}",
+          "queryType": "range"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "thresholds" }, "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 1, "stacking": { "mode": "none" }, "showPoints": "never" } }, "overrides": [] },
+      "interval": "1h"
+    },
+    {
+      "id": 53,
+      "type": "logs",
+      "title": "Rapports de scan (filtre : critical > 0)",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 8 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{environment=~\"$env\", server=~\"$server\", source=\"trivy\"} | json | critical != \"0\"",
+          "refId": "A",
+          "maxLines": 200
+        }
+      ],
+      "options": { "showTime": true, "sortOrder": "Descending", "enableLogDetails": true, "prettifyLogMessage": true, "showCommonLabels": false, "wrapLogMessage": true, "dedupStrategy": "none", "tail": false }
+    },
+    {
+      "id": 54,
+      "type": "stat",
+      "title": "Dernières 24 h — images avec au moins une CRITICAL",
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 18 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "refId": "A",
+          "expr": "count(count_over_time({environment=~\"$env\", server=~\"$server\", source=\"trivy\"} | json | critical != \"0\" [24h]))",
+          "queryType": "range"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } }, "overrides": [] }
+    }
+  ]
+}

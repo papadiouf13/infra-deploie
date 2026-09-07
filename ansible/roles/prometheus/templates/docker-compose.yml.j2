@@ -8,6 +8,9 @@ services:
     container_name: prometheus
     restart: unless-stopped
     user: "{{ prometheus_uid }}:{{ prometheus_uid }}"
+    group_add:
+      # Groupe docker : permet au docker_sd_configs de lire le socket Docker.
+      - "{{ docker_group_gid | default(988) }}"
     networks:
       - proxy
       - monitoring

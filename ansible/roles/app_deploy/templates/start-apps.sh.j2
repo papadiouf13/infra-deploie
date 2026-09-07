@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# =====================================================================
+# start-apps.sh — démarre TOUTES les applications présentes dans
+# {{ app_root }} au boot (service systemd).
+# Chaque sous-répertoire doit contenir un docker-compose.yml.
+# =====================================================================
+set -euo pipefail
+
+APP_ROOT="{{ app_root }}"
+LOG=/var/log/start-apps.log
+
+{
+  echo "[start-apps] $(date -Is) — démarrage des apps depuis $APP_ROOT"
+  for dir in "$APP_ROOT"/*/; do
+    [ -d "$dir" ] || continue
+    app=$(basename "$dir")
+    [ -f "$dir/docker-compose.yml" ] || continue
+    echo "[start-apps] up -d $app"
+    ( cd "$dir" && docker compose up -d --remove-orphans ) || echo "[start-apps] ERREUR sur $app"
+  done
+  echo "[start-apps] terminé."
+} >> "$LOG" 2>&1

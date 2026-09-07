@@ -1,0 +1,10 @@
+[Unit]
+Description=Planification quotidienne du scan Trivy
+
+[Timer]
+OnCalendar={{ trivy_schedule }}
+Persistent=true
+Unit=trivy-scan.service
+
+[Install]
+WantedBy=timers.target

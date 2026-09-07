@@ -23,6 +23,8 @@ services:
       # Hors de /var/log : runc ne peut pas créer le point de montage /
       # var/log/traefik à travers le bind ro /var/log (EROFS).
       - /opt/traefik/logs:/logs/traefik:ro
+      # Rapports de scan Trivy (JSONL, 1 ligne/image) — lecture seule.
+      - /opt/trivy/reports:/opt/trivy/reports:ro
     command:
       - run
       - --server.http.listen-addr=0.0.0.0:12345

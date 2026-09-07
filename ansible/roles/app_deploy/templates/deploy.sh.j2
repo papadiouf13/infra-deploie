@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# =====================================================================
+# deploy.sh — déploiement GÉNÉRIQUE d'une application sur l'hôte.
+#
+# Usage : deploy.sh <app> [tag]
+#   <app> : sous-répertoire de {{ app_root }} (doit contenir un compose)
+#   [tag] : tag d'image à déployer (défaut : develop), ex : sha-abc1234
+#
+# Le docker-compose doit référencer l'image comme :
+#   image: <registry>/<repo>:${IMAGE_TAG:-develop}
+# Ce script exporte IMAGE_TAG=<tag> puis fait pull + up -d.
+#
+# Appelé soit par deploy-wrapper.sh (CI/CD), soit manuellement.
+# =====================================================================
+set -euo pipefail
+
+APP_ROOT="{{ app_root }}"
+APP="${1:-}"
+TAG="${2:-develop}"
+[ -n "$APP" ] || { echo "usage: $0 <app> [tag]" >&2; exit 1; }
+APP_DIR="$APP_ROOT/$APP"
+
+command -v docker >/dev/null 2>&1 || { echo "[deploy] docker absent" >&2; exit 1; }
+
+log()  { echo -e "\033[1;34m[deploy:$APP]\033[0m $*"; }
+fail() { echo -e "\033[1;31m[deploy:$APP:ERROR]\033[0m $*" >&2; exit 1; }
+
+[ -d "$APP_DIR" ] || fail "dossier $APP_DIR introuvable"
+cd "$APP_DIR"
+
+COMPOSE_FILES=$(ls docker-compose*.yml 2>/dev/null || true)
+[ -n "$COMPOSE_FILES" ] || fail "aucun docker-compose.yml dans $APP_DIR"
+
+log "Cible : $APP (tag '$TAG')"
+
+# ----- Tag d'image fourni au compose -----
+export IMAGE_TAG="$TAG"
+
+# ----- Pull puis up (recreate si l'image a changé) -----
+for f in $COMPOSE_FILES; do
+  log "pull ($f)…"
+  docker compose -f "$f" pull --quiet || log "⚠️  pull : image peut-être introuvable — on tente up"
+  log "up -d ($f)…"
+  docker compose -f "$f" up -d --remove-orphans
+done
+
+# ----- Attente du statut healthy (si healthcheck défini) -----
+log "Attente du statut healthy des services…"
+TIMEOUT=${DEPLOY_HEALTH_TIMEOUT:-120}
+END=$((SECONDS+TIMEOUT))
+ALL_OK=1
+while [ $SECONDS -lt $END ]; do
+  ALL_OK=1
+  for c in $(docker compose ps --format '{% raw %}{{.Name}}{% endraw %}' 2>/dev/null); do
+    state=$(docker inspect -f '{% raw %}{{.State.Health.Status}}{% endraw %}' "$c" 2>/dev/null || true)
+    # Pas de healthcheck défini -> état vide -> considéré sain.
+    [ -z "$state" ] && state="none"
+    if [ "$state" != "healthy" ] && [ "$state" != "none" ]; then
+      ALL_OK=0
+      log "  $c : $state"
+    fi
+  done
+  [ "$ALL_OK" -eq 1 ] && break
+  sleep 4
+done
+
+if [ "$ALL_OK" -eq 1 ]; then
+  log "✓ tous les services sont démarrés."
+else
+  log "⚠️  services non healthy (délai dépassé) — état ci-dessous :"
+  docker compose ps || true
+fi
+
+# ----- Hook de migrations métier (optionnel) -----
+if [ -x ./migrate.sh ]; then
+  log "Exécution des migrations ($APP_DIR/migrate.sh)…"
+  ./migrate.sh || log "⚠️  migrate.sh a renvoyé une erreur"
+fi
+
+log "Déploiement terminé ($APP)."

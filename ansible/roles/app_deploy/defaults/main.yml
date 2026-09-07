@@ -1,0 +1,32 @@
+---
+# =====================================================================
+# APP_DEPLOY — hôte de déploiement CI/CD des applications.
+#
+# Prépare la VM à recevoir n'importe quelle application déployée par
+# GitHub Actions via une clé SSH restreinte :
+#   * réseau Docker "back" partagé (bases de données privées)
+#   * dossier d'accueil /opt/apps"
+#   * clé de déploiement ~/.ssh/deploy_key (publique autorisée dans
+#     authorized_keys de l'utilisateur, enveloppée d'un wrapper)
+#   * deploy.sh générique (pull + up + healthcheck + rollback sha-)
+#   * start-apps.sh + service systemd (démarrage des apps au boot)
+#   * docker login (PAT Docker Hub depuis le vault si renseigné)
+#
+# Le CI/CD (workflow GitHub) écrit le docker-compose et les .env dans
+# /opt/apps/<app>/ puis appelle `deploy.sh <app>`.
+# =====================================================================
+
+# Utilisateur cible laquelle l'on veut se connecter (celui du CI/CD).
+app_deploy_user: "{{ ansible_user }}"
+
+# Répertoire racine qui accueille les apps (une sous-couche par app).
+app_root: "/opt/apps"
+
+# Répertoire des scripts de déploiement génériques.
+deploy_dir: "/opt/deploy"
+
+# Nom de la clé de déploiement (privée, ~/.ssh/) ; doit rester sur l'hôte.
+deploy_key_name: "deploy_key"
+
+# Registry Docker Hub (utilisé pour docker login et le pull des images).
+docker_registry: "registry-1.docker.io"

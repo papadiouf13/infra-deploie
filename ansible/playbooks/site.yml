@@ -12,7 +12,8 @@
 #   5. prometheus : collecte
 #   6. loki / alloy : journaux centralisés
 #   7. grafana  : console + alerting
-#   8. sonarqube : (seulement si enable_sonarqube, par défaut en prod)
+#   8. trivy    : scan quotidien des vulnérabilités des images de conteneurs
+#   9. sonarqube : (seulement si enable_sonarqube, par défaut en prod)
 # =====================================================================
 
 - name: Provisionner la pile de monitoring
@@ -53,6 +54,7 @@
     - loki
     - alloy
     - grafana
+    - trivy
     - role: sonarqube
       when: enable_sonarqube | bool
 

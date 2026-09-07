@@ -109,6 +109,25 @@
       ansible.builtin.command:
         cmd: docker run --rm --network monitoring curlimages/curl:8.7.1 -fs http://loki:3100/loki/api/v1/labels
 
+    - name: Trivy - script de scan présent et exécutable
+      ansible.builtin.stat:
+        path: "{{ trivy_base_dir }}/scan-containers.sh"
+      register: trivy_script
+      failed_when: not (trivy_script.stat.exists and trivy_script.stat.mode == '0750')
+
+    - name: Trivy - timer systemd actif
+      ansible.builtin.command:
+        cmd: systemctl is-active trivy-scan.timer
+      register: trivy_timer
+      changed_when: false
+      failed_when: trivy_timer.stdout != 'active'
+
+    - name: Trivy - fichier de rapports existant (créé par le premier scan)
+      ansible.builtin.stat:
+        path: "{{ trivy_report_dir }}/trivy.jsonl"
+      register: trivy_report
+      failed_when: not trivy_report.stat.exists
+
     - name: SonarQube doit répondre (si activé)
       ansible.builtin.shell:
         cmd: docker run --rm --network proxy curlimages/curl:8.7.1 -sk --resolve '{{ sonar_host }}:443:{{ traefik_ip.stdout }}' https://{{ sonar_host }}/api/system/status
