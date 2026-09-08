@@ -15,9 +15,9 @@ environment_name: "{{ group_names[0] }}"
 # server_name est une variable d'hôte définie dans l'inventaire (dev-server, prod-server).
 
 # ---- Utilisateur / connexion SSH ----
-ansible_user: ubuntu
+ansible_user: mamadou
 ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-ansible_ssh_private_key_file: "~/.ssh/monitoring-key.pem"
+ansible_ssh_private_key_file: "~/.ssh/id_ed25519"
 ansible_python_interpreter: /usr/bin/python3
 
 # ---- Admin ----
@@ -25,23 +25,46 @@ ansible_python_interpreter: /usr/bin/python3
 # (Prometheus, dashboard Traefik). Restreindre impérativement en production.
 admin_cidr:
   - "0.0.0.0/0"
-admin_email: "admin@example.com"
+admin_email: "mamadou173diouf@gmail.com"
 
-# ---- Hostnames (nip.io par défaut : aucune configuration DNS) ----
-# L'IP publique est une variable d'hôte (public_ip) fournie par l'inventaire.
-# Pour utiliser un vrai domaine, redéfinir ces variables dans group_vars/<env>.yml
-# (ex : grafana_host: "grafana.example.com").
-grafana_host: "grafana.{{ public_ip }}.nip.io"
-prometheus_host: "prometheus.{{ public_ip }}.nip.io"
-traefik_host: "traefik.{{ public_ip }}.nip.io"
-sonar_host: "sonar.{{ public_ip }}.nip.io"
-whoami_host: "whoami.{{ public_ip }}.nip.io"
+# ---- Hostnames ----
+# Tous les hostnames dérivent d'une SEULE variable : infra_domain.
+#   - Par défaut : nip.io (basé sur l'IP publique) : aucune configuration DNS.
+#   - Vrai domaine : redéfinir infra_domain dans un groupe especial group_vars/<env>.yml
+#     (ex : "tioukh.duckdns.org") — tous les services suivent automatiquement.
+infra_domain: "{{ public_ip }}.nip.io"
+grafana_host: "grafana.{{ infra_domain }}"
+prometheus_host: "prometheus.{{ infra_domain }}"
+traefik_host: "traefik.{{ infra_domain }}"
+sonar_host: "sonar.{{ infra_domain }}"
+whoami_host: "whoami.{{ infra_domain }}"
 
 # ---- TLS / ACME ----
 # traefik_cert_type : "letsencrypt" (par défaut) ou "selfsigned".
 # acme_is_staging : true en dev pour éviter les rate-limits Let's Encrypt.
+# acme_challenge :
+#   - "http" : HTTP-01 (défaut) — nécessite une IP/domaine joignable depuis internet.
+#   - "dns"  : DNS-01 — fonctionne même en IP privée/NAT (validation par enregistrements TXT).
+# acme_dns_provider : nom du provider lego pour DNS-01 (ex : "duckdns", "cloudflare"...).
+# acme_dns_resolvers : résolveurs utilisés par Traefik pour vérifier la propagation TXT.
+# acme_dns_env_key / acme_dns_env_value : variable d'environnement fournie au conteneur
+# Traefik pour l'API du provider (pour duckdns : DUCKDNS_TOKEN + duckdns_token du vault).
 traefik_cert_type: letsencrypt
 acme_is_staging: false
+acme_challenge: http
+acme_dns_provider: duckdns
+acme_dns_resolvers:
+  - "1.1.1.1:53"
+  - "8.8.8.8:53"
+acme_dns_env_key: "DUCKDNS_TOKEN"
+acme_dns_env_value: "{{ duckdns_token }}"
+# Wildcard : avec DNS-01, un SEUL certificat "*.{{ infra_domain }}" pour tous les
+# services (nécessaire pour DuckDNS : un seul enregistrement _acme-challenge,
+# éviter les collisions entre demandes concurrentes). Hors DNS-01 (http challenge),
+# un certificat est émis par hôte.
+acme_use_wildcard: false
+# Délai (s) avant de vérifier la propagation DNS-01 (DuckDNS est lent en propagation).
+acme_dns_delay_before_check: 15
 # Les hash bcrypt des middlewares basic-auth (Prometheus/Traefik) sont
 # PRECALCULES (scripts/gen-bcrypt-hash.sh) et stockés dans le vault :
 # aucune dépendance passlib/bcrypt côté contrôleur à l'exécution.

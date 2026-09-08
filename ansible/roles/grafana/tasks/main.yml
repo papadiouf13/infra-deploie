@@ -90,7 +90,9 @@
 
 - name: Grafana - vérifier l'accès authentifié via Traefik (HTTPS)
   ansible.builtin.uri:
-    url: "https://{{ grafana_host }}/api/org"
+    url: "https://127.0.0.1/api/org"
+    headers:
+      Host: "{{ grafana_host }}"
     user: "{{ grafana_admin_user }}"
     password: "{{ grafana_admin_password }}"
     force_basic_auth: true

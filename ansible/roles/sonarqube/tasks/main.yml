@@ -38,7 +38,9 @@
 
 - name: SonarQube - attendre que l'instance réponde via Traefik (HTTPS)
   ansible.builtin.uri:
-    url: "https://{{ sonar_host }}/api/system/status"
+    url: "https://127.0.0.1/api/system/status"
+    headers:
+      Host: "{{ sonar_host }}"
     status_code: 200
     validate_certs: false
   register: sonar_status
@@ -49,7 +51,9 @@
 
 - name: SonarQube - changer le mot de passe admin (une fois, depuis le défaut "admin")
   ansible.builtin.uri:
-    url: "https://{{ sonar_host }}/api/users/change_password"
+    url: "https://127.0.0.1/api/users/change_password"
+    headers:
+      Host: "{{ sonar_host }}"
     method: POST
     user: admin
     password: "{{ sonarqube_admin_current_password }}"

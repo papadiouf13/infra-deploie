@@ -99,16 +99,27 @@ ssh:
 	ssh -o StrictHostKeyChecking=no $$IP
 
 urls:
-	@IP=$$(terraform -chdir=$(TF_DIR) output -raw public_ip 2>/dev/null \
-		|| grep -oP 'public_ip=\K[^ ]+' $(INV_TPL) 2>/dev/null); \
-	if [ -z "$$IP" ]; then echo "IP introuvable."; exit 1; fi; \
+	@IP=$$(grep -oP 'ansible_host=\K[^ ]+' $(INV_TPL) 2>/dev/null \
+		|| terraform -chdir=$(TF_DIR) output -raw private_ip 2>/dev/null \
+		|| terraform -chdir=$(TF_DIR) output -raw public_ip 2>/dev/null); \
+	DOMAIN=$$(grep -oP '^infra_domain:\s*"?\K[^" ]+' $(ANSIBLE_DIR)/group_vars/$(ENV).yml 2>/dev/null); \
+	DOMAIN=$${DOMAIN:-"$$IP.nip.io"}; \
+	if [ -z "$$IP" ]; then echo "IP introuvable (inventaire ou terraform)."; exit 1; fi; \
 	echo "---------------------------------------------------------------"; \
-	echo " Environnement $(ENV) — IP : $$IP"; \
+	echo " Environnement $(ENV) — domaine : $${DOMAIN} — IP LAN : $$IP"; \
 	echo "---------------------------------------------------------------"; \
-	echo " Grafana    : https://grafana.$$IP.nip.io        (admin Grafana)"; \
-	echo " Prometheus : https://prometheus.$$IP.nip.io     (basic-auth)"; \
-	echo " Traefik    : https://traefik.$$IP.nip.io        (basic-auth)"; \
-	echo " Whoami     : https://whoami.$$IP.nip.io"; \
-	echo " SonarQube  : https://sonar.$$IP.nip.io          (prod par défaut)"; \
+	echo " Grafana    : https://grafana.$${DOMAIN}        (admin Grafana)"; \
+	echo " Prometheus : https://prometheus.$${DOMAIN}     (basic-auth)"; \
+	echo " Traefik    : https://traefik.$${DOMAIN}        (basic-auth)"; \
+	echo " Whoami     : https://whoami.$${DOMAIN}"; \
+	echo " SonarQube  : https://sonar.$${DOMAIN}          (prod par défaut)"; \
+	echo "---------------------------------------------------------------"; \
+	echo " Accès LAN derrière DuckDNS : ajouter au fichier hosts Windows :"; \
+	echo "   $$IP  grafana.$${DOMAIN}"; \
+	echo "   $$IP  prometheus.$${DOMAIN}"; \
+	echo "   $$IP  traefik.$${DOMAIN}"; \
+	echo "   $$IP  whoami.$${DOMAIN}"; \
+	echo "   $$IP  sonar.$${DOMAIN}"; \
+	echo "  (admin) : notepad C:\\Windows\\System32\\drivers\\etc\\hosts"; \
 	echo "---------------------------------------------------------------"; \
 	echo "SSH : make ssh ENV=$(ENV)"

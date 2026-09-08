@@ -1,0 +1,8 @@
+# Normalisation des fins de ligne (LF dans le dépôt, CRLF auto sur Windows)
+* text=auto
+
+*.md     text eol=lf
+*.yml    text eol=lf
+*.j2     text eol=lf
+Makefile text eol=lf
+.gitignore text eol=lf

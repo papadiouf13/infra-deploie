@@ -19,6 +19,10 @@ services:
       - ./dynamic.yml:/etc/traefik/dynamic.yml:ro
       - ./acme.json:/etc/traefik/acme.json
       - ./logs:/var/log/traefik
+{% if acme_challenge == 'dns' %}
+    environment:
+      - "{{ acme_dns_env_key }}={{ acme_dns_env_value }}"
+{% endif %}
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.traefik.rule=Host(`{{ traefik_host }}`)"
@@ -28,6 +32,10 @@ services:
       - "traefik.http.routers.traefik.middlewares=basic-auth-traefik@file,allowlist-admin@file"
 {% if traefik_cert_type == 'letsencrypt' %}
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+{% endif %}
+{% if acme_use_wildcard %}
+      - "traefik.http.routers.traefik.tls.domains[0].main=*.{{ infra_domain }}"
+      - "traefik.http.routers.traefik.tls.domains[0].sans={{ infra_domain }}"
 {% endif %}
 
   # Service d'exemple de routage (aucune application déployée).
@@ -47,6 +55,10 @@ services:
       - "traefik.http.services.whoami.loadbalancer.server.port=80"
 {% if traefik_cert_type == 'letsencrypt' %}
       - "traefik.http.routers.whoami.tls.certresolver=letsencrypt"
+{% endif %}
+{% if acme_use_wildcard %}
+      - "traefik.http.routers.whoami.tls.domains[0].main=*.{{ infra_domain }}"
+      - "traefik.http.routers.whoami.tls.domains[0].sans={{ infra_domain }}"
 {% endif %}
 
 networks:

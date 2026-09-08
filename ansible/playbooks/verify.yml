@@ -104,6 +104,11 @@
     - name: Loki doit répondre (prêt)
       ansible.builtin.command:
         cmd: docker run --rm --network monitoring curlimages/curl:8.7.1 -fs http://loki:3100/ready
+      register: loki_ready
+      changed_when: false
+      retries: 30
+      delay: 5
+      until: loki_ready.rc == 0
 
     - name: Loki doit contenir des journaux (ingestion par Alloy)
       ansible.builtin.command:
@@ -126,7 +131,19 @@
       ansible.builtin.stat:
         path: "{{ trivy_report_dir }}/trivy.jsonl"
       register: trivy_report
-      failed_when: not trivy_report.stat.exists
+
+    - name: Trivy - lancer un premier scan si aucun rapport n'existe
+      ansible.builtin.command:
+        cmd: systemctl start trivy-scan.service
+      when: not trivy_report.stat.exists
+
+    - name: Trivy - attendre la création du rapport (le 1er scan télécharge les bases)
+      ansible.builtin.stat:
+        path: "{{ trivy_report_dir }}/trivy.jsonl"
+      register: trivy_report
+      retries: 60
+      delay: 5
+      until: trivy_report.stat.exists
 
     - name: SonarQube doit répondre (si activé)
       ansible.builtin.shell:

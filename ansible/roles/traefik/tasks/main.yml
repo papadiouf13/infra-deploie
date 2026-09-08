@@ -57,7 +57,9 @@
 
 - name: Traefik - attendre le routage HTTPS (whoami)
   ansible.builtin.uri:
-    url: "https://{{ whoami_host }}/whoami"
+    url: "https://127.0.0.1/whoami"
+    headers:
+      Host: "{{ whoami_host }}"
     validate_certs: false
     timeout: 15
     status_code: 200

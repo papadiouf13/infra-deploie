@@ -1671,49 +1671,65 @@ Sur la **VM existante** : passer l'inventaire en mode VPS avec `public_ip`,
 - Seul `traefik` publie les ports hôte (80/443). Toutes les autres interfaces
   internes (`.expose`) ne sont jamais visibles de l'extérieur.
 
-## 9.2 Hostnames (nip.io, « sous-domaines »)
+## 9.2 Hostnames : une seule variable `infra_domain`
 
-Rappel des règles (environnement `dev`, IP publique A.B.C.D) :
+Tous les hostnames dérivent de **`infra_domain`** (`all.yml`, surchargé par
+`group_vars/<env>.yml`) :
 
-| app | nom |
+```
+infra_domain: "tioukh.duckdns.org"        # dev (DuckDNS)
+#infra_domain: "{{ public_ip }}.nip.io"   # défaut : aucun DNS requis
+```
+
+| app | hostname (dev) |
 |---|---|
-| Grafana | `grafana.<ip>.nip.io` |
-| Prometheus | `prometheus.<ip>.nip.io` |
-| Dashboard Traefik | `traefik.<ip>.nip.io` |
-| whoami | `whoami.<ip>.nip.io` |
-| SonarQube | `sonar.<ip>.nip.io` |
+| Grafana | `grafana.tioukh.duckdns.org` |
+| Prometheus | `prometheus.tioukh.duckdns.org` |
+| Dashboard Traefik | `traefik.tioukh.duckdns.org` |
+| whoami | `whoami.tioukh.duckdns.org` |
+| SonarQube | `sonar.tioukh.duckdns.org` (si activé) |
 
-- Variables : `grafana_host`, `prometheus_host`, etc. (all.yml).
-- L'IP est injectée dans le **template `traefik`** via la var d'hôte
-  `public_ip` de l'inventaire (+ le hostname tenant compte du `nip.io`).
-- ⚠️ **Changer d'IP** après réinstallation : re-rejouer `make configure`
-  (les hostnames dans Traefik/Grafana se mettent à jour), et mettre à jour le
-  DNS réel (si `domain` renseigné).
+- Aucun hostname en dur : `grafana_host`, `prometheus_host`, etc. (`all.yml`).
+- `make urls ENV=dev` affiche les URL **et** le bloc `hosts` à copier (voir 9.3).
+- ⚠️ **Changer d'IP** après réinstallation : rejouer `make configure` (hostnames
+  Traefik/Grafana mis à jour) — voir `CHANGEMENT-IP-SERVEUR.md`.
 
-## 9.3 DNS réel (domaine propre)
+## 9.3 DNS réel (DuckDNS) — certifiats LE même en IP privée
 
-En cas de domaine réel (`domain` non vide) :
-1. Terraform routable `domain` vers l'EIP (NS / A).
-2. `dynamic.yml.j2` : une route par sous-domaine (ou wildcard).
-3. ACME HTTPS-01 chargé sur `web` (port 80, redirection auto vers 443).
+1. **Challenge DNS-01** : DuckDNS porte la TXT `_acme-challenge.tioukh.duckdns.org`
+   (API via `DUCKDNS_TOKEN` → env traefik, vault.yml).
+2. **Wildcard** (`acme_use_wildcard: true`) : un seul cert `*.tioukh.duckdns.org`
+   pour tous les services (obligatoire avec DuckDNS : un seul `_acme-challenge`
+   possible ; des requêtes parallèles par sous-domaine s'écraseraient).
+3. **Accès LAN derrière DuckDNS** : `*.tioukh.duckdns.org` résout vers l'IP
+   **publique** de la box → en LAN privé, ajouter au
+   `C:\Windows\System32\drivers\etc\hosts` (admin), bloc fourni par
+   `make urls` :
+   ```
+   192.168.175.131  grafana.tioukh.duckdns.org
+   192.168.175.131  prometheus.tioukh.duckdns.org
+   192.168.175.131  traefik.tioukh.duckdns.org
+   192.168.175.131  whoami.tioukh.duckdns.org
+   192.168.175.131  sonar.tioukh.duckdns.org
+   ```
+   → navigateur en cadenas vert (cert LE wildcard valide). Accès Internet réel :
+   NAT box 80/443 → VM **et** restreindre `admin_cidr` (défaut `0.0.0.0/0`).
 
 ## 9.4 TLS / Let's Encrypt
 
-- Mode par défaut : **TLS automatique** via `certificatesResolvers.letsencrypt`
-  (ACME HTTP-01 sur le port 80 → redirection 443).
-- `acme.json` (0600) : stocke les certs ; **jamais** exposé dans un dépôt ;
-  à sauvegarder (14).
-- Dev : `acme_is_staging: true` (évite les rate-limits, pas de cert valide).
-- Prod : `acme_is_staging: false`.
-- Alternative possible : `traefik_cert_type: selfsigned` (aucun ACME, cert
-  auto-signé).
+- TLS auto via `certificatesResolvers.letsencrypt`, stockage `acme.json` (0600),
+  jamais commité, à sauvegarder (14).
+- Challenge : `acme_challenge: http` (port 80, défaut) ou `acme_challenge: dns`
+  (DuckDNS/IP privée) ; provider+resolvers dans `all.yml`.
+- **Dev (DuckDNS)** : `acme_is_staging: false` → **vrais certs** (testés sur
+  `*.tioukh.duckdns.org`). Option : `traefik_cert_type: selfsigned`.
 
 Points d'attention :
-- **Rate limits LE** (prod) : ne pas rejouer trop souvent ; laisser le
-  ACME renouveler seul (dépend de l'accès au port 80).
-- **Port 80** : indispensable en HTTP-01 même quand tout est en 443.
-- Le certificat est renouvelé par Traefik ; ne pas bricoler `acme.json`
-  quand le service tourne.
+- **Rate limits LE (prod)** : ne pas rejouer trop souvent ; laisser l'ACME
+  renouveler seul.
+- **Propagation DuckDNS** : `acme_dns_delay_before_check` (15 s) ; en cas
+  d'échec de propagation, Traefik retente seul (ne pas redémarrer en boucle).
+- Ne pas bricoler `acme.json` quand le service tourne.
 
 ## 9.5 Réseau + Flux applicatif attendu
 

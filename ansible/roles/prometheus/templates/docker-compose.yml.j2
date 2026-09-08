@@ -40,6 +40,10 @@ services:
 {% if traefik_cert_type == 'letsencrypt' %}
       - "traefik.http.routers.prometheus.tls.certresolver=letsencrypt"
 {% endif %}
+{% if acme_use_wildcard %}
+      - "traefik.http.routers.prometheus.tls.domains[0].main=*.{{ infra_domain }}"
+      - "traefik.http.routers.prometheus.tls.domains[0].sans={{ infra_domain }}"
+{% endif %}
       - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
 
 networks:

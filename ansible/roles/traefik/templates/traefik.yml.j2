@@ -60,8 +60,20 @@ certificatesResolvers:
 {% endif %}
       email: "{{ admin_email }}"
       storage: /etc/traefik/acme.json
+{% if acme_challenge == 'dns' %}
+      # DNS-01 : fonctionne même en IP privée/NAT (provider lego défini par
+      # acme_dns_provider ; token via variable d'env du conteneur).
+      dnsChallenge:
+        provider: "{{ acme_dns_provider }}"
+        delayBeforeCheck: {{ acme_dns_delay_before_check }}
+        resolvers:
+{% for r in acme_dns_resolvers %}
+          - "{{ r }}"
+{% endfor %}
+{% else %}
       httpChallenge:
         entryPoint: web
+{% endif %}
 {% else %}
 # Mode autosigné : pas de résolveur ACME, Traefik sert son certificat
 # auto-généré par défaut sur websecure (avertissement navigateur attendu).

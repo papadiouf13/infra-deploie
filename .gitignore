@@ -27,3 +27,9 @@ ansible/group_vars/vault.yml
 .env
 .DS_Store
 *.log
+
+# Mot de passe vault local (jamais commité)
+.vault-pass
+
+# Backups locaux chiffrés du vault (jamais commités)
+*.vps-bak

@@ -57,6 +57,10 @@ services:
 {% if traefik_cert_type == 'letsencrypt' %}
       - "traefik.http.routers.sonar.tls.certresolver=letsencrypt"
 {% endif %}
+{% if acme_use_wildcard %}
+      - "traefik.http.routers.sonar.tls.domains[0].main=*.{{ infra_domain }}"
+      - "traefik.http.routers.sonar.tls.domains[0].sans={{ infra_domain }}"
+{% endif %}
       - "traefik.http.services.sonar.loadbalancer.server.port={{ sonarqube_web_port }}"
 
 networks:
