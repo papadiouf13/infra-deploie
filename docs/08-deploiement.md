@@ -18,6 +18,49 @@ Sur la **VM existante** : passer l'inventaire en mode VPS avec `public_ip`,
 `server_name`, `app_deploy_user=papa`, puis rejouer `make configure ENV=dev`
 (vaut aussi `-i inventories/dev/hosts.ini`).
 
+## 8.1bis Mode standalone (le serveur est son propre contrôleur, sans WSL)
+
+Pour déployer un **nouveau serveur** en SSH directement, sans poste de contrôle
+séparé :
+
+```
+# sur le serveur (Ubuntu), première fois
+sudo apt update && sudo apt install -y git make curl
+ssh-keygen -t ed25519                # clé GitHub si dépôt privé
+git clone https://github.com/papadiouf13/infra-deploie.git
+cd infra-deploie
+scripts/standalone-prep.sh [dev|prod]
+```
+
+Le script prépare les **outils contrôleur** (python3, pip, ansible +
+collections `requirements.yml`), génère `inventories/<env>/hosts.ini` en mode
+local (`ansible_connection=local`), copie les fichiers `vault.yml` /
+`server_vars.yml` depuis les exemples et crée `.vault-pass`.
+
+Ensuite, sur ce serveur :
+
+```bash
+# 1. Éditer SES variables propres (DUCK objectif principal) :
+nano ansible/group_vars/server_vars.yml    # infra_domain = son sous-dom. DuckDNS
+nano ansible/group_vars/vault.yml          # duckdns_token, password Grafana, hashs…
+
+# 2. Chiffrer le vault (une fois) :
+ansible-vault encrypt --vault-password-file .vault-pass ansible/group_vars/vault.yml
+
+# 3. Déployer / vérifier :
+make configure ENV=dev VAULT_ARGS='--vault-password-file ../.vault-pass'
+make verify   ENV=dev VAULT_ARGS='--vault-password-file ../.vault-pass'
+make urls     ENV=dev
+```
+
+> ⚠️ Chaque serveur a **son** sous-domaine DuckDNS → son `infra_domain` (dans
+> `server_vars.yml`) **et** son `duckdns_token` (dans `vault.yml`). Tous les
+> hostnames en dérivent. Voir 9 (DNS/TLS).
+>
+> ℹ️ `make preflight` ne **exige plus** terraform : il est ignoré (warning) en
+> mode VPS/standalone ; `terraform` reste requis seulement pour les cibles AWS
+> (`plan`/`apply`/`deploy`/`destroy`).
+
 ## 8.2 Secrets : Ansible Vault
 
 - Fichier cible : `ansible/group_vars/vault.yml` (déclaré dans site.yml via

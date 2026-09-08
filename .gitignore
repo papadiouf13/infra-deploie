@@ -19,6 +19,10 @@ ansible/inventories/*/hosts.ini
 ansible/group_vars/vault.yml
 !ansible/group_vars/vault.yml.example
 
+# Variables spécifiques au serveur (jamais commitées ; voir server_vars.yml.example)
+ansible/group_vars/server_vars.yml
+!ansible/group_vars/server_vars.yml.example
+
 # Clés SSH privées
 *.pem
 *.key

@@ -1610,6 +1610,53 @@ Sur la **VM existante** : passer l'inventaire en mode VPS avec `public_ip`,
 `server_name`, `app_deploy_user=papa`, puis rejouer `make configure ENV=dev`
 (vaut aussi `-i inventories/dev/hosts.ini`).
 
+## 8.1bis Mode standalone (le serveur est son propre contrôleur, sans WSL)
+
+Pour déployer un **nouveau serveur** en SSH directement — le serveur joue à la
+fois le rôle de **nœud de contrôle** et de **cible** — sans poste séparé :
+
+```
+# sur le serveur (Ubuntu), première fois
+sudo apt update && sudo apt install -y git make curl
+ssh-keygen -t ed25519                # clé GitHub si dépôt privé
+git clone https://github.com/papadiouf13/infra-deploie.git
+cd infra-deploie
+scripts/standalone-prep.sh [dev|prod]
+```
+
+`standalone-prep.sh` installe les **outils contrôleur** (python3, pip, Ansible +
+collections `requirements.yml`), génère `inventories/<env>/hosts.ini` en mode
+local (`ansible_connection=local`), copie `vault.yml` / `server_vars.yml` depuis
+les exemples et crée `.vault-pass` (idempotent : rien n'est écrasé).
+
+Ensuite, sur ce serveur :
+
+```bash
+# 1. Éditer SES variables propres :
+nano ansible/group_vars/server_vars.yml    # infra_domain = son sous-dom. DuckDNS
+nano ansible/group_vars/vault.yml          # duckdns_token, password Grafana, hashs…
+# 2. Chiffrer le vault (une fois) :
+ansible-vault encrypt --vault-password-file .vault-pass ansible/group_vars/vault.yml
+# 3. Déployer / vérifier :
+make configure ENV=dev VAULT_ARGS='--vault-password-file ../.vault-pass'
+make verify   ENV=dev VAULT_ARGS='--vault-password-file ../.vault-pass'
+make urls     ENV=dev
+```
+
+> ⚠️ **Chaque serveur = son propre sous-domaine DuckDNS** : `infra_domain`
+> (dans `server_vars.yml`) **et** `duckdns_token` (dans `vault.yml`) lui sont
+> propres. Tous les hostnames en découlent (voir 9).
+>
+> ✅ La re-définition par serveur est garantie par `server_vars.yml` : ce fichier
+> **gitignoré** est `include_vars` **après** `all.yml`/`vault.yml`/`<env>.yml`
+> dans `site.yml`, `verify.yml` et `app-deploy.yml` — son existence est testée
+> par un `stat` (optionnel et silencieux quand le fichier est absent). On peut
+> ainsi écraser `infra_domain`, `duckdns_domains`, `app_deploy_user`,
+> `timezone`, `acme_is_staging`, `admin_cidr`… sans modifier de fichier commité.
+>
+> ℹ️ `make preflight` **n'exige plus terraform** (warning si absent) en mode
+> VPS/standalone ; il reste requis pour `plan`/`apply`/`deploy`/`destroy` (AWS).
+
 ## 8.2 Secrets : Ansible Vault
 
 - Fichier cible : `ansible/group_vars/vault.yml` (déclaré dans site.yml via

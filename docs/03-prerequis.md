@@ -14,7 +14,7 @@
 
 Outils requis **sur le poste depuis lequel on déploie** :
 
-- `terraform` ≥ 1.9 (mode AWS uniquement)
+- `terraform` ≥ 1.9 (mode AWS uniquement ; optionnel / warning en mode VPS / standalone)
 - `ansible` ≥ 2.14 + collections (voir 3.3)
 - `docker` + plugin `docker compose` (pour lancer des conteneurs éphémères de
   test/curl, cf. playbook `verify.yml`)

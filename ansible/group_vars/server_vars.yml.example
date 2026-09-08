@@ -1,0 +1,48 @@
+---
+# =====================================================================
+# group_vars/server_vars.yml — VARIABLES SPÉCIFIQUES AU SERVEUR.
+#
+# Copier ce fichier en group_vars/server_vars.yml (PAS commité) sur
+# CHAQUE serveur, puis ne renseigner QUE ce qui diffère de
+# all.yml / dev.yml / prod.yml.
+#
+# Ce fichier est chargé EN DERNIER par les playbooks (après all/vault/env),
+# donc ses valeurs écrasent les valeurs par défaut : c'est ici qu'on
+# "redéfinit les variables du nouveau serveur" sans toucher au code.
+#
+# La variable la plus importante est infra_domain : chaque serveur doit
+# avoir SON propre sous-domaine DuckDNS (+ son duckdns_token dans le vault).
+# =====================================================================
+#
+# --- Domaine public (OBLIGATOIRE pour DuckDNS) ---
+# Chaque serveur = un sous-domaine DuckDNS distinct.
+# Ex : "tioukh.duckdns.org" pour le serveur actuel, "maquette.duckdns.org"
+# pour un nouveau serveur. Tous les hostnames (grafana., prometheus., ...)
+# en découlent automatiquement.
+#infra_domain: "maquette.duckdns.org"
+
+# --- DuckDNS : mise à jour automatique de l'IP (cron toutes les 10 min) ---
+# Le token est SENSIBLE et reste dans vault.yml. Ici seulement le domaine.
+# Ex : "maquette" (attention : écraser la valeur de prod.yml si présente).
+#duckdns_domains: "maquette"
+#duckdns_token: ""          # laisser vide : pris depuis vault.yml
+
+# --- Utilisateur du déploiement CI/CD (créé/possesseur /opt/apps) ---
+#app_deploy_user: "papa"
+
+# --- IPS du serveur (si elles ne sont pas déjà dans l'inventaire) ---
+#public_ip: "203.0.113.10"
+#private_ip: "203.0.113.10"
+
+# --- Fuseau horaire (défaut : UTC) ---
+#timezone: "Europe/Paris"
+
+# --- IP admin autorisées sur les consoles protégées (MAJ. en prod) ---
+#admin_cidr:
+#  - "0.0.0.0/0"
+
+# --- TLS : les réglages ACME de l'environnement s'appliquent par défaut. ---
+# Pour un serveur RÉEL avec DuckDNS, dev.yml/prod.yml les activent déjà
+# (acme_challenge: dns, acme_use_wildcard: true, acme_is_staging: false).
+# On peut forcer le staging ici (tests avant la vraie prod) :
+#acme_is_staging: true

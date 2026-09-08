@@ -37,6 +37,17 @@
       vars:
         env: "{{ 'dev' if 'dev' in group_names else 'prod' }}"
 
+    - name: Fichier server_vars.yml présent ?
+      ansible.builtin.stat:
+        path: "{{ playbook_dir }}/../group_vars/server_vars.yml"
+      register: server_vars
+      tags: always
+
+    - name: Variables spécifiques au serveur (group_vars/server_vars.yml, optionnel)
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../group_vars/server_vars.yml"
+      when: server_vars.stat.exists
+
   roles:
     - app_deploy
 

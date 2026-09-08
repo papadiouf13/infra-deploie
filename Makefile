@@ -2,7 +2,7 @@
 # infra-deploie — Makefile d'orchestration
 #
 # Usage :
-#   make preflight  ENV=dev|prod    Vérifie les outils présents
+#   make preflight  ENV=dev|prod    Vérifie les outils présents (terraform optionnel)
 #   make plan       ENV=dev|prod    Terraform plan (workspace + tfvars)
 #   make apply      ENV=dev|prod    Terraform apply
 #   make inventory  ENV=dev|prod    Écrit ansible/inventories/<env>/hosts.ini
@@ -17,6 +17,9 @@
 #   Remplir ansible/inventories/<env>/hosts.ini à la main PUIS :
 #   make configure ENV=<env>  (et make verify)
 # pour tout le reste.
+#
+# Mode standalone (contrôleur = le serveur, sans WSL) :
+#   scripts/standalone-prep.sh [dev|prod]  puis configure/verify/urls.
 # =====================================================================
 
 SHELL       := /bin/bash
@@ -37,7 +40,7 @@ VERIFY      := $(ANSIBLE_DIR)/playbooks/verify.yml
 
 help:
 	@echo "Cibles disponibles (ENV=dev|prod) :"
-	@echo "  preflight  - vérifie les outils (terraform, ansible, docker, curl)"
+	@echo "  preflight  - vérifie les outils (terraform optionnel, ansible, docker, curl)"
 	@echo "  plan       - terraform plan (workspace + tfvars)"
 	@echo "  apply      - terraform apply (création infra AWS)"
 	@echo "  inventory  - génère ansible/inventories/<env>/hosts.ini depuis terraform"
@@ -49,9 +52,10 @@ help:
 	@echo "  urls       - affiche les URLs de l'environnement"
 	@echo ""
 	@echo "Mode VPS : remplir l'inventaire à la main puis configure/verify/ssh/urls."
+	@echo "Mode standalone (contrôleur = serveur) : scripts/standalone-prep.sh [dev|prod]."
 
 preflight:
-	@command -v terraform >/dev/null 2>&1 || { echo "ERREUR: terraform manquant"; exit 1; }
+	@command -v terraform >/dev/null 2>&1 || echo "AVERTISSEMENT: terraform non trouvé (ignoré en mode VPS/standalone ; requis uniquement pour AWS plan/apply/destroy)"
 	@command -v ansible-playbook >/dev/null 2>&1 || { echo "ERREUR: ansible manquant (pip install ansible + collections)"; exit 1; }
 	@command -v docker >/dev/null 2>&1 || { echo "ERREUR: docker manquant"; exit 1; }
 	@command -v curl >/dev/null 2>&1 || { echo "ERREUR: curl manquant"; exit 1; }
