@@ -103,10 +103,12 @@ ssh:
 	ssh -o StrictHostKeyChecking=no $$IP
 
 urls:
-	@IP=$$(grep -oP 'ansible_host=\K[^ ]+' $(INV_TPL) 2>/dev/null \
+	@IP=$$(grep -oP 'public_ip=\K[^ ]+' $(INV_TPL) 2>/dev/null \
+		|| grep -oP 'ansible_host=\K[^ ]+' $(INV_TPL) 2>/dev/null \
 		|| terraform -chdir=$(TF_DIR) output -raw private_ip 2>/dev/null \
 		|| terraform -chdir=$(TF_DIR) output -raw public_ip 2>/dev/null); \
-	DOMAIN=$$(grep -oP '^infra_domain:\s*"?\K[^" ]+' $(ANSIBLE_DIR)/group_vars/$(ENV).yml 2>/dev/null); \
+	DOMAIN=$$(grep -oP '^infra_domain:\s*"?\K[^" ]+' $(ANSIBLE_DIR)/group_vars/server_vars.yml 2>/dev/null \
+		|| grep -oP '^infra_domain:\s*"?\K[^" ]+' $(ANSIBLE_DIR)/group_vars/$(ENV).yml 2>/dev/null); \
 	DOMAIN=$${DOMAIN:-"$$IP.nip.io"}; \
 	if [ -z "$$IP" ]; then echo "IP introuvable (inventaire ou terraform)."; exit 1; fi; \
 	echo "---------------------------------------------------------------"; \

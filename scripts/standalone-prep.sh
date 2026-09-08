@@ -52,7 +52,7 @@ if [ ! -f "$INV_FILE" ]; then
   [ -f "$INV_DIR/hosts.ini.example" ] || { echo "ERREUR: pas d'exemple $INV_DIR/hosts.ini.example"; exit 1; }
   echo "l'inventaire $INV_FILE n'existe pas -> on le crée (mode local)."
   read -r -p "server_name (ex: vps2) : " SERVER_NAME
-  read -r -p "public_ip (IP publique/DuckDNS) : " PUBLIC_IP
+  read -r -p "public_ip (IP LAN de CE serveur, vue depuis ton poste Windows — VM VMware bridged : ex 192.168.175.x ; DuckDNS pointe automatiquement l'IP publique) : " PUBLIC_IP
   read -r -p "ansible_user (compte SSH admin) [ubuntu] : " ANS_USER
   ANS_USER="${ANS_USER:-ubuntu}"
   read -r -s -p "ansible_become_password (sudo, laissé vide si NOPASSWD) : " BECOME_PASS; echo

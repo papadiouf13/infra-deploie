@@ -43,7 +43,9 @@ Chaque serveur possède **son propre sous-domaine DuckDNS**.
 1. Aller sur https://www.duckdns.org et se connecter.
 2. Cliquer **add domain** et noter le nom choisi (ex : `moninfra`).
 3. Copier le **token** de ce domaine (il servira à l'étape 5).
-4. Noter la nouvelle IP publique : sur le serveur, `curl -s https://api.ipify.org`.
+4. Noter les **deux IP** du serveur :
+   - IP **publique** : sur le serveur, `curl -s https://api.ipify.org` (c'est elle qui va dans DuckDNS automatiquement, pas besoin de la façonner ici).
+   - IP **LAN** de la VM : `ip a` dans la VM (mode VMware **Bridged**, même réseau que ton poste, ex `192.168.175.x`). C'est **cette IP que tu donneras au prompt `public_ip` de l'étape 5** et que tu mettras dans le fichier `hosts` Windows.
 
 > ⚠️ Ne **jamais** réutiliser `tioukh` (déjà rattaché à un autre serveur).
 > Le sous-domaine sera : `moninfra.duckdns.org`.
@@ -65,10 +67,16 @@ Le script demande interactivement :
 |---|---|
 | Environnement | `dev` (ou `prod`) |
 | `server_name` | ex : `monvps` |
-| `public_ip` | l'IP publique affichée à l'étape 4 |
+| `public_ip` | **l'IP LAN de la VM** (vue depuis ton poste Windows, mode Bridged) — PAS l'IP publique (le cron DuckDNS s'occupe de l'IP publique tout seul) |
 | `ansible_user` | le compte SSH administrateur (ex : `ubuntu`) |
 | `ansible_become_password` | le mot de passe `sudo` de ce compte |
 | Mot de passe vault | laisser vide pour en générer un (affiché une fois) |
+
+> **VM VMware** : placer la VM sur le réseau **Bridged** (elle a alors une IP
+> de ton LAN et est joignable par les autres machines). En **NAT**, elle n'est
+> joignable que depuis l'hôte Windows — fonctionnel pour tester depuis ton
+> poste uniquement. IP fixe recommandée (ou réservation DHCP dans VMware),
+> sinon le fichier `hosts` casse après un reboot.
 
 À la fin, le script affiche les étapes restantes (édition des fichiers).
 
@@ -149,9 +157,9 @@ ingestion Loki, scanner Trivy.
 
 ## 9. Accès depuis un poste (browser)
 
-DuckDNS ne résout le domaine que vers l'IP publique. Depuis le LAN, ajouter
+DuckDNS pointe le domaine vers l'IP **publique**. Depuis le LAN, ajouter
 dans le fichier `hosts` du poste (`notepad C:\Windows\System32\drivers\etc\hosts`
-en admin sous Windows) :
+en admin sous Windows) l'IP **LAN** de la VM (mode Bridged) :
 
 ```text
 <ip-LAN-du-serveur>  grafana.moninfra.duckdns.org
