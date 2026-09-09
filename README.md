@@ -39,7 +39,7 @@ Entrée principale : **`make deploy ENV=dev|prod`**.
 | Traefik | Reverse-proxy TLS | Publié sur **80/443 uniquement** ; Let's Encrypt HTTP-01 ; staging en dev ; `whoami` exemple de route |
 | Prometheus | Métriques | Scrape statique + `docker_sd` (label `prometheus.scrape=true`) ; console derrière basic-auth + IP allowlist |
 | Loki + Alloy | Journaux centralisés | Conteneurs + syslog + access logs Traefik (JSON parsé) |
-| Grafana | Console + Alerting | Datasources/composantes provisionnés ; 5 dashboards ; règles de gravité |
+| Grafana | Console + Alerting | Datasources provisionnés ; **7 dashboards v2** (NOC, hôte, Docker, Traefik + heatmap, applications, logs, Trivy) ; règles de gravité |
 | cAdvisor / Node Exporter / daemon Docker | Métriques conteneurs/hôte | Réseau interne uniquement |
 | SonarQube + PostgreSQL | Qualité du code | **prod par défaut** (dev désactivé pour RAM) |
 | common (UFW, fail2ban, upgrades auto, DuckDNS) | Durcissement | 22/80/443 + 9323 (réseaux Docker) ouverts |

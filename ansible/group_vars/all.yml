@@ -186,9 +186,24 @@ monitoring_scrape_interval: 15s
 
 # ---- Dashboards provisionnés dans Grafana (fichiers sous roles/grafana/templates/dashboards) ----
 grafana_dashboards:
-  - overview
-  - infrastructure
-  - docker
-  - traefik
-  - logs
-  - trivy
+  - overview          # page d'accueil (NOC) : santé, trafic, disponibilité, alertes
+  - infrastructure    # hôte : CPU, RAM, disques, réseau
+  - docker            # conteneurs : état, top consommateurs, évolution
+  - traefik           # reverse-proxy : codes HTTP, latence (percentiles + heatmap), TLS, access logs
+  - applications      # apps déployées : santé, trafic par router, ressources, journaux
+  - logs              # Loki : explorateur, erreurs, sécurité SSH/fail2ban
+  - trivy             # vulnérabilités CRITICAL/HIGH par image
+
+# Apparence Grafana : "dark" ou "light".
+grafana_default_theme: "dark"
+
+# Plugins de panels Grafana optionnels (les dashboards fournis n'en ont PAS
+# besoin : panels natifs uniquement). Exemples :
+#   - grafana-polystat-panel
+#   - marcusolsson-treemap-panel
+#   - volkovlabs-echarts-panel
+# Nécessite un accès Internet du conteneur au démarrage.
+grafana_plugins: []
+
+# Buckets (secondes) de l'histogramme de latence Traefik (heatmap Grafana).
+traefik_metrics_buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]

@@ -33,6 +33,15 @@ metrics:
     entryPoint: metrics
     addEntryPointsLabels: true
     addServicesLabels: true
+    # Métriques par router (traefik_router_*) : indispensables pour les
+    # dashboards "par application" de Grafana.
+    addRoutersLabels: true
+    # Buckets fins pour une vraie heatmap de latence (défaut Traefik trop
+    # grossier : 0.1 / 0.3 / 1.2 / 5).
+    buckets:
+{% for b in traefik_metrics_buckets %}
+      - {{ b }}
+{% endfor %}
 
 providers:
   docker:

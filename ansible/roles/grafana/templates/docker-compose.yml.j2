@@ -28,6 +28,16 @@ services:
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_SNAPSHOTS_EXTERNAL_ENABLED: "false"
       GF_LOG_MODE: console
+      # --- Apparence & ergonomie (dashboards v2) ---
+      GF_USERS_DEFAULT_THEME: "{{ grafana_default_theme }}"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/overview.json
+      GF_DASHBOARDS_MIN_REFRESH_INTERVAL: "10s"
+      GF_DATE_FORMATS_USE_BROWSER_LOCALE: "true"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+{% if grafana_plugins | length > 0 %}
+      # Plugins de panels optionnels (téléchargés au démarrage du conteneur).
+      GF_INSTALL_PLUGINS: "{{ grafana_plugins | join(',') }}"
+{% endif %}
 {% if alerting.email.enabled %}
       # SMTP utilisé par Grafana pour l'alerte e-mail.
       GF_SMTP_ENABLED: "true"

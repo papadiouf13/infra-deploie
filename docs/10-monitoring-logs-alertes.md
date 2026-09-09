@@ -80,22 +80,36 @@ labels:
 - Contact point unique `all-channels` : toujours e-mail (+ option Telegram/Slack/Discord).
 - Déclenchement : Grafana lui-même (pas d'Alertmanager).
 
-## 10.5 Dashboards provisionnés (Grafana)
+## 10.5 Dashboards provisionnés (Grafana) — v2
 
-| Nom de fichier | Panneaux / axes |
+Sept dashboards, générés avec un style unifié (thème sombre, tuiles KPI en
+dégradé, jauges, `state-timeline`, heatmap, sections repliables) et **uniquement
+des panels natifs Grafana 11** (aucun plugin requis). Tous portent les
+variables `env` / `server` et un menu déroulant « Dashboards » pour naviguer.
+
+| Fichier | Contenu |
 |---|---|
-| `overview.json` | vue d'ensemble : up servers, HTTP erreurs, latence, Docker, Node, CPU/RAM |
-| `infrastructure.json` | hôte (CPU, RAM, disk, réseau), conteneurs Docker (restarts, mem), système |
-| `docker.json` | stats Docker conteneurs (CPu, mem, restarts, flux d'I/O) |
-| `traefik.json` | requêtes/s, codes, latences, top routers |
-| `logs.json` | **Loki** : flux des logs (variables `env`/`server`, `allValue: ".+"`) + stats |
-| `trivy.json` | **Loki** : CRITICAL/HIGH par image, filtre des scans à risque, stat « images CRITICAL 24 h » |
-| labels | Tous : `environment`, `server` |
+| `overview.json` | **Page d'accueil (NOC)** : serveur UP/DOWN, conteneurs actifs/arrêtés, cibles down, uptime, jauges CPU/RAM/disque, tuiles HTTP 2xx/3xx/4xx/5xx, req/s, taux de succès, latence p50/p95/p99, disponibilité des cibles (timeline), présence des conteneurs, ressources, **liste des alertes Grafana**, dernières erreurs (Loki) |
+| `infrastructure.json` | Hôte : jauges CPU/RAM/disque/swap, load/cœurs, connexions TCP, CPU par mode (empilé), load 1/5/15, mémoire détaillée, **bargauge des systèmes de fichiers**, I/O disque, réseau, erreurs/drops |
+| `docker.json` | Conteneurs : running/paused/stopped, redémarrages 1 h, **présence par conteneur (status-history)**, répartition des états (donut), top CPU/RAM (LCD), mémoire/limite, évolution, tableau détaillé avec cellules-jauges |
+| `traefik.json` | Reverse-proxy : requêtes période, succès, connexions ouvertes, tuiles 2xx/3xx/4xx/5xx, p50/p95/p99, routers/services actifs, rechargements, **heatmap de latence**, percentiles (légende min/max/moy), p95 par service, **certificats TLS (jours avant expiration)**, donuts codes/routers/méthodes, access logs Loki (statuts, routers, top IP, requêtes lentes, erreurs) |
+| `applications.json` | **Nouveau** — apps déployées (conteneurs d'infra exclus) : présence des conteneurs, taux de succès par router, req/s et 5xx par router, p95 par service, CPU/RAM/réseau, erreurs et flux de journaux |
+| `logs.json` | Loki : lignes/erreurs/avertissements par minute, échecs SSH et bannissements fail2ban, volumes par conteneur, top conteneurs, explorateur avec variable `search` (regex), auth.log |
+| `trivy.json` | Loki : CRITICAL/HIGH du dernier scan (`last_over_time`), images scannées, images avec CRITICAL, rapports sur 25 h, bargauges par image, tendance 7 j, rapports bruts |
 
-> ⚠️ Mise à jour de `logs.json` (S9) : les variables `env` et `server` ont été
-> corrigées de `allValue: ".*"` (matcher rejeté par Loki, d'où le « No data »)
-> vers `allValue: ".+"`. Tout nouveau dashboard utilisant ces variables doit
-> respecter ce pattern.
+Variables Traefik supplémentaires : `entrypoint`, `router`, `service`, `rng`
+(fenêtre des tuiles). Les métriques par router exigent `addRoutersLabels: true`
+et la heatmap exige des buckets fins (`traefik_metrics_buckets` dans
+`group_vars/all.yml`) — les deux sont posés par le rôle `traefik`.
+
+Réglages Grafana associés (`group_vars/all.yml`) : `grafana_default_theme`
+(`dark`), page d'accueil = `overview.json`, `grafana_plugins` (liste vide par
+défaut ; ex. `grafana-polystat-panel`, `volkovlabs-echarts-panel` — nécessite
+Internet au démarrage du conteneur).
+
+> ⚠️ Variables et Loki : `allValue` doit être `".+"` (jamais `".*"`, matcher
+> vide rejeté par Loki → « No data »). Tous les dashboards v2 respectent ce
+> pattern, y compris pour Prometheus.
 
 ## 10.6 Volumes / données métriques
 
