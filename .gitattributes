@@ -4,5 +4,6 @@
 *.md     text eol=lf
 *.yml    text eol=lf
 *.j2     text eol=lf
+*.sh     text eol=lf
 Makefile text eol=lf
 .gitignore text eol=lf
