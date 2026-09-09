@@ -30,10 +30,20 @@ if ! command -v ansible-playbook >/dev/null 2>&1; then
   if ! command -v pip3 >/dev/null 2>&1 && ! command -v pip >/dev/null 2>&1; then
     sudo apt install -y python3-pip
   fi
-  python3 -m pip install --user --upgrade ansible-core
+  # PEP 668 (Ubuntu 24.04+) : pip bloque l'installation hors venv.
+  # On tente d'abord normalement ; en cas d'échec on relance avec --break-system-packages.
+  python3 -m pip install --user --upgrade ansible-core \
+    || python3 -m pip install --user --break-system-packages --upgrade ansible-core
   export PATH="$HOME/.local/bin:$PATH"
+  # Rendre le PATH persistant pour les sessions futures (sinon make ne trouve pas ansible-playbook).
+  if ! grep -q '.local/bin' "$HOME/.bashrc" 2>/dev/null; then
+    echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
+    echo "> Ajout pour mémoire : export PATH=\"\$HOME/.local/bin:\$PATH\" in ~/.bashrc"
+  fi
 fi
-if ! ansible-galaxy collection list community.docker >/dev/null 2>&1; then
+# Vérifier la présence réelle des collections (le `list` renvoie 0 même si rien n'est installé).
+if [ ! -d "$HOME/.ansible/collections/ansible_collections/community/docker" ] \
+  || [ ! -d "$HOME/.ansible/collections/ansible_collections/community/general" ]; then
   ansible-galaxy collection install -r ansible/requirements.yml
 fi
 echo "Ansible : $(ansible-playbook --version 2>/dev/null | head -1)"
