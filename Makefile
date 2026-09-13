@@ -8,6 +8,7 @@
 #   make inventory  ENV=dev|prod    Écrit ansible/inventories/<env>/hosts.ini
 #   make configure  ENV=dev|prod    Ansible site.yml (Docker, Traefik, monitoring)
 #   make deploy     ENV=dev|prod    = apply + inventory + configure
+#   make app-socle  ENV=dev|prod    Socle CI/CD des apps (1x par serveur)
 #   make verify     ENV=dev|prod    Ansible verify.yml (contrôles post-déploiement)
 #   make destroy    ENV=dev|prod    Terraform destroy (avec confirmation)
 #   make ssh        ENV=dev|prod    Connexion SSH au serveur
@@ -36,7 +37,7 @@ INV_TPL     := $(ANSIBLE_DIR)/inventories/$(ENV)/hosts.ini
 PLAYBOOK    := $(ANSIBLE_DIR)/playbooks/site.yml
 VERIFY      := $(ANSIBLE_DIR)/playbooks/verify.yml
 
-.PHONY: help preflight plan apply inventory configure deploy verify destroy ssh urls
+.PHONY: help preflight plan apply inventory configure app-socle deploy verify destroy ssh urls
 
 help:
 	@echo "Cibles disponibles (ENV=dev|prod) :"
@@ -46,6 +47,7 @@ help:
 	@echo "  inventory  - génère ansible/inventories/<env>/hosts.ini depuis terraform"
 	@echo "  configure  - ansible-playbook site.yml"
 	@echo "  deploy     - apply + inventory + configure"
+	@echo "  app-socle  - ansible-playbook app-deploy.yml (socle CI/CD des apps, 1x par serveur)"
 	@echo "  verify     - ansible-playbook verify.yml"
 	@echo "  destroy    - terraform destroy (confirmation demandée)"
 	@echo "  ssh        - connexion SSH"
@@ -77,6 +79,12 @@ inventory: tf-select
 
 configure:
 	cd $(ANSIBLE_DIR) && ansible-playbook -i inventories/$(ENV)/hosts.ini playbooks/site.yml $(VAULT_ARGS)
+
+# Socle de déploiement des applications : /opt/apps, clé CI/CD restreinte,
+# deploy.sh, service start-apps, réseau back. À jouer UNE FOIS par serveur,
+# après `configure`. Les déploiements applicatifs passent ensuite par le CI/CD.
+app-socle:
+	cd $(ANSIBLE_DIR) && ansible-playbook -i inventories/$(ENV)/hosts.ini playbooks/app-deploy.yml $(VAULT_ARGS)
 
 deploy: apply inventory configure
 

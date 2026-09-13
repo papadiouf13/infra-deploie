@@ -92,11 +92,23 @@ Cette étape s'effectue **une fois** lors de la mise en place du serveur
 ### 4.1 Socle applicatif (Ansible)
 
 ```bash
-# Depuis le dépôt infra-deploie (controleur) :
+# Depuis la racine du dépôt infra-deploie (contrôleur ou serveur en standalone) :
+make app-socle ENV=dev VAULT_ARGS='--vault-password-file ../.vault-pass'
+```
+
+Équivalent sans Make :
+
+```bash
 cd ansible
 ansible-playbook -i inventories/dev/hosts.ini playbooks/app-deploy.yml \
     --vault-password-file ../.vault-pass
 ```
+
+> ⚠️ Vérifier avant de jouer le playbook que `app_deploy_user` correspond
+> bien au compte du serveur. Par défaut il vaut `ansible_user` (donc le
+> compte utilisé par l'inventaire) ; s'il est forcé dans
+> `ansible/group_vars/server_vars.yml`, c'est cette valeur qui gagne.
+> Un mauvais compte crée la clé CI/CD dans le mauvais `authorized_keys`.
 
 Le playbook crée (détail dans `ansible/roles/app_deploy`) :
 

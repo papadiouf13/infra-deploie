@@ -94,6 +94,7 @@ make verify    ENV=dev
 | `inventory` | Écrit `ansible/inventories/<env>/hosts.ini` depuis terraform |
 | `configure` | `ansible-playbook playbooks/site.yml` |
 | `deploy` | `apply` + `inventory` + `configure` |
+| `app-socle` | Socle CI/CD des applications (`app-deploy.yml`) — **une fois par serveur** |
 | `verify` | `ansible-playbook playbooks/verify.yml` (santé + exposition réseau) |
 | `destroy` | `terraform destroy` (confirmation) |
 | `ssh` / `urls` | Connexion / affichage des URLs de l'environnement |
