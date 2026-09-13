@@ -96,6 +96,8 @@ variables `env` / `server` et un menu déroulant « Dashboards » pour naviguer.
 | `applications.json` | **Nouveau** — apps déployées (conteneurs d'infra exclus) : présence des conteneurs, taux de succès par router, req/s et 5xx par router, p95 par service, CPU/RAM/réseau, erreurs et flux de journaux |
 | `logs.json` | Loki : lignes/erreurs/avertissements par minute, échecs SSH et bannissements fail2ban, volumes par conteneur, top conteneurs, explorateur avec variable `search` (regex), auth.log |
 | `trivy.json` | Loki : CRITICAL/HIGH du dernier scan (`last_over_time`), images scannées, images avec CRITICAL, rapports sur 25 h, bargauges par image, tendance 7 j, rapports bruts |
+| `projects.json` | **Vue « Projets »** : une carte par projet (services, CPU, RAM) avec lien vers le détail, tableau comparatif cliquable, CPU/mémoire par projet, erreurs de journaux par projet, trafic HTTP et 5xx par projet |
+| `project-detail.json` | **Détail d'un projet** : services et présence des conteneurs, tableau CPU/mémoire/réseau, ressources dans le temps, routers Traefik, codes HTTP, latence p50/p95/p99, requêtes en erreur, journaux du projet (avec recherche regex) |
 
 Variables Traefik supplémentaires : `entrypoint`, `router`, `service`, `rng`
 (fenêtre des tuiles). Les métriques par router exigent `addRoutersLabels: true`
@@ -110,6 +112,43 @@ Internet au démarrage du conteneur).
 > ⚠️ Variables et Loki : `allValue` doit être `".+"` (jamais `".*"`, matcher
 > vide rejeté par Loki → « No data »). Tous les dashboards v2 respectent ce
 > pattern, y compris pour Prometheus.
+
+### 10.5.1 Regroupement par projet (label `project`)
+
+Les deux dashboards « Projets » raisonnent en **projets**, pas en conteneurs.
+Le regroupement repose sur un simple label Docker posé par chaque application :
+
+```yaml
+services:
+  api:
+    image: monorg/mon-api:${IMAGE_TAG}
+    labels:
+      - "project=mon-projet"          # ← regroupe ce service dans « mon-projet »
+      - "traefik.enable=true"
+      - "traefik.http.routers.mon-projet-api.rule=Host(`${APP_HOST}`)"
+```
+
+La chaîne complète, posée par Ansible (rien à faire côté serveur) :
+
+| Étage | Mécanisme | Résultat |
+|---|---|---|
+| cAdvisor | `--store_container_labels=false` + `--whitelisted_container_labels` (variable `cadvisor_container_labels`) | expose `container_label_project` |
+| Prometheus (job `cadvisor`) | `metric_relabel_configs` | renomme en **`project`** et retire les labels bruts |
+| Prometheus (job `docker-containers`) | `relabel_configs` | pose `project` sur les cibles applicatives scrapées |
+| Alloy → Loki | `discovery.relabel` | pose **`project`** sur les journaux |
+
+Si le label `project` est absent, un **repli** utilise le projet Compose
+(`com.docker.compose.project`) : une application déployée depuis un dossier
+`/opt/apps/todo_back` apparaît donc déjà, sans modification.
+
+**Convention de nommage des routers Traefik.** Les métriques Traefik ne portent
+pas de label `project` (impossible côté Traefik). Le trafic HTTP par projet est
+donc déduit du **nom du router**, selon la convention `<projet>-<service>` —
+par exemple `mon-projet-api`, `mon-projet-front`. Dans le dashboard de détail,
+la variable « Router » vaut par défaut `$project-*` ; si tes routers sont nommés
+autrement, les panneaux HTTP restent vides et il suffit de sélectionner les
+routers à la main dans la liste déroulante (les panneaux conteneurs et journaux,
+eux, fonctionnent toujours puisqu'ils s'appuient sur le label).
 
 ## 10.6 Volumes / données métriques
 

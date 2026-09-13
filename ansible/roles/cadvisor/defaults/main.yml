@@ -1,2 +1,9 @@
 ---
-# (aucune variable spécifique)
+# Labels Docker convertis en labels Prometheus par cAdvisor.
+# `project` est la clé du regroupement par projet (dashboards « Projets » et
+# « Projet — détail ») ; les deux labels compose servent de repli quand une
+# application n'a pas encore de label `project`.
+cadvisor_container_labels:
+  - project
+  - com.docker.compose.project
+  - com.docker.compose.service

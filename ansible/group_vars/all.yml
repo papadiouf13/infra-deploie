@@ -191,6 +191,8 @@ grafana_dashboards:
   - docker            # conteneurs : état, top consommateurs, évolution
   - traefik           # reverse-proxy : codes HTTP, latence (percentiles + heatmap), TLS, access logs
   - applications      # apps déployées : santé, trafic par router, ressources, journaux
+  - projects          # une carte par projet (label Docker `project`) + tableau comparatif
+  - project-detail    # détail d'un projet : services, ressources, trafic HTTP, journaux
   - logs              # Loki : explorateur, erreurs, sécurité SSH/fail2ban
   - trivy             # vulnérabilités CRITICAL/HIGH par image
 

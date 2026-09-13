@@ -30,6 +30,26 @@ scrape_configs:
         labels:
           environment: "{{ environment_name }}"
           server: "{{ server_name }}"
+    # cAdvisor expose les labels autorisés sous la forme `container_label_<nom>`
+    # (cf. cadvisor_container_labels). On les renomme en labels courts pour que
+    # Prometheus et Loki parlent le même vocabulaire : `project` des deux côtés.
+    metric_relabel_configs:
+      - source_labels: [container_label_project]
+        action: replace
+        target_label: project
+      # Repli : si le label `project` est absent, on prend le projet compose.
+      - source_labels: [project, container_label_com_docker_compose_project]
+        separator: ";"
+        regex: ";(.+)"
+        replacement: "${1}"
+        action: replace
+        target_label: project
+      - source_labels: [container_label_com_docker_compose_service]
+        action: replace
+        target_label: compose_service
+      # Les labels bruts ne servent plus : on les retire (cardinalité).
+      - action: labeldrop
+        regex: "container_label_.*"
 
   # --- Traefik (requêtes, latence, erreurs, certs TLS) ---
   - job_name: traefik
@@ -99,6 +119,17 @@ scrape_configs:
         replacement: "${1}"
         action: replace
         target_label: __metrics_path__
+      # Regroupement par projet (dashboards « Projets » / « Projet — détail ») :
+      # label Docker `project`, avec repli sur le projet compose.
+      - source_labels: [__meta_docker_container_label_project]
+        action: replace
+        target_label: project
+      - source_labels: [project, __meta_docker_container_label_com_docker_compose_project]
+        separator: ";"
+        regex: ";(.+)"
+        replacement: "${1}"
+        action: replace
+        target_label: project
       - target_label: environment
         replacement: "{{ environment_name }}"
       - target_label: server

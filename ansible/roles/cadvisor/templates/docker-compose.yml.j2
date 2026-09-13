@@ -12,6 +12,12 @@ services:
       - --port=8080
       - --housekeeping_interval=10s
       - --docker_only=true
+      # Labels Docker exposés comme labels Prometheus (container_label_<nom>).
+      # store_container_labels=false est OBLIGATOIRE pour que la liste blanche
+      # s'applique : sans lui, cAdvisor exporterait TOUS les labels (explosion
+      # de cardinalité, dont les labels Traefik).
+      - --store_container_labels=false
+      - --whitelisted_container_labels={{ cadvisor_container_labels | join(',') }}
     environment:
       # Le healthcheck embarqué utilise cette URL (sinon il sonde le mauvais port).
       CADVISOR_HEALTHCHECK_URL: "http://localhost:8080/"

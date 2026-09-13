@@ -28,6 +28,25 @@ discovery.relabel "containers" {
     source_labels = ["__meta_docker_container_image"]
     target_label  = "image"
   }
+
+  // ---- Regroupement par projet ----
+  // Chaque service applicatif porte le label Docker `project` (voir la
+  // procedure CI/CD). Les dashboards "Projets" et "Projet - detail" en
+  // dependent.
+  rule {
+    source_labels = ["__meta_docker_container_label_project"]
+    target_label  = "project"
+  }
+
+  // Repli : si `project` est absent, on retombe sur le projet compose.
+  // La regex ne correspond que lorsque la premiere valeur est vide.
+  rule {
+    source_labels = ["project", "__meta_docker_container_label_com_docker_compose_project"]
+    separator     = ";"
+    regex         = ";(.+)"
+    replacement   = "$1"
+    target_label  = "project"
+  }
 }
 
 // Acheminement commun vers Loki.

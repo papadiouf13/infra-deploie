@@ -212,11 +212,13 @@ services:
       - proxy
       - back
     labels:
+      # Regroupement dans les dashboards « Projets » de Grafana (cf. §6.5).
+      - "project=mon-app"
       - "traefik.enable=true"
-      - "traefik.http.routers.mon-app.rule=Host(`${APP_HOST}`) && PathPrefix(`/api`)"
-      - "traefik.http.routers.mon-app.middlewares=mon-app-strip@docker"
+      - "traefik.http.routers.mon-app-api.rule=Host(`${APP_HOST}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.mon-app-api.middlewares=mon-app-strip@docker"
       - "traefik.http.middlewares.mon-app-strip.stripprefix.prefixes=/api"
-      - "traefik.http.services.mon-app.loadbalancer.server.port=8000"
+      - "traefik.http.services.mon-app-api.loadbalancer.server.port=8000"
     healthcheck:
       test: ["CMD", "curl", "-fs", "http://localhost:8000/health"]
       interval: 30s
@@ -267,9 +269,11 @@ services:
     networks:
       - proxy
     labels:
+      # Regroupement dans les dashboards « Projets » de Grafana (cf. §6.5).
+      - "project=mon-front"
       - "traefik.enable=true"
-      - "traefik.http.routers.mon-front.rule=Host(`${APP_HOST}`) && !PathPrefix(`/api`)"
-      - "traefik.http.services.mon-front.loadbalancer.server.port=3000"
+      - "traefik.http.routers.mon-front-web.rule=Host(`${APP_HOST}`) && !PathPrefix(`/api`)"
+      - "traefik.http.services.mon-front-web.loadbalancer.server.port=3000"
 
 networks:
   proxy:
@@ -279,6 +283,30 @@ networks:
 > Astuce front : embarquez l'URL de l'API **au build** avec une variable ARG
 > du Dockerfile (ex. `NEXT_PUBLIC_API_URL=/api`) plutôt qu'en dur. Le front
 > parle ainsi à l'API par Traefik (chemin `/api`), sans URL DNS codée.
+
+### 6.5 Le label `project` (visibilité dans Grafana)
+
+Grafana fournit deux dashboards orientés projet — **« Projets »** (une carte
+par projet) et **« Projet — détail »** (services, ressources, trafic HTTP et
+journaux d'un seul projet). Ils regroupent les conteneurs par un label Docker :
+
+```yaml
+    labels:
+      - "project=mon-app"      # même valeur sur TOUS les services du projet
+```
+
+À poser sur chaque service du `docker-compose.yml`, **base de données comprise**
+— c'est ce qui fait apparaître la base dans la carte du projet. Sans ce label,
+l'application reste visible via un repli sur le nom du projet Compose
+(directive `name:` en haut du fichier), mais le regroupement est alors subi
+plutôt que choisi.
+
+Deuxième moitié de la convention, côté Traefik : **nommer les routers**
+`<projet>-<service>` (`mon-app-api`, `mon-app-front`…). Les métriques Traefik
+ne peuvent pas porter de label personnalisé ; le trafic HTTP d'un projet est
+donc déduit du nom de ses routers. Si tu t'en écartes, les panneaux conteneurs
+et journaux fonctionnent quand même — seuls les panneaux HTTP demandent alors
+de choisir les routers à la main dans la liste déroulante du dashboard.
 
 ### 6.4 Les middlewares
 
