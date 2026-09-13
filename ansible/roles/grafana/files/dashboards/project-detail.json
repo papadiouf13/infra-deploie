@@ -110,17 +110,30 @@
       },
       {
         "name": "infra",
-        "label": "Masquer (regex)",
-        "type": "textbox",
-        "query": "traefik|whoami|grafana|prometheus|loki|alloy|cadvisor|node.?exporter|sonarqube|trivy",
+        "label": "Périmètre",
+        "type": "custom",
+        "query": "Applications seulement : traefik|whoami|grafana|prometheus|loki|alloy|cadvisor|node.?exporter|sonarqube|trivy,Tout (infra comprise) : __aucun__",
+        "multi": false,
+        "includeAll": false,
         "hide": 0,
-        "description": "Projets écartés de la vue (conteneurs d'infrastructure). Vider le champ pour tout afficher.",
+        "skipUrlSync": false,
         "current": {
-          "selected": false,
-          "text": "traefik|whoami|grafana|prometheus|loki|alloy|cadvisor|node.?exporter|sonarqube|trivy",
+          "selected": true,
+          "text": "Applications seulement",
           "value": "traefik|whoami|grafana|prometheus|loki|alloy|cadvisor|node.?exporter|sonarqube|trivy"
         },
-        "options": []
+        "options": [
+          {
+            "selected": true,
+            "text": "Applications seulement",
+            "value": "traefik|whoami|grafana|prometheus|loki|alloy|cadvisor|node.?exporter|sonarqube|trivy"
+          },
+          {
+            "selected": false,
+            "text": "Tout (infra comprise)",
+            "value": "__aucun__"
+          }
+        ]
       },
       {
         "name": "project",
@@ -448,7 +461,7 @@
     {
       "id": 25,
       "type": "stat",
-      "title": "Redémarrages (1 h)",
+      "title": "Démarrés (< 1 h)",
       "description": "",
       "gridPos": {
         "x": 9,

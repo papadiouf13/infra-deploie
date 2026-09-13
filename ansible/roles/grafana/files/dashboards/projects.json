@@ -109,6 +109,20 @@
         "options": []
       },
       {
+        "name": "infra",
+        "label": "Masquer (regex)",
+        "type": "textbox",
+        "query": "traefik|whoami|grafana|prometheus|loki|alloy|cadvisor|node.?exporter|sonarqube|trivy",
+        "hide": 0,
+        "description": "Projets écartés de la vue (conteneurs d'infrastructure). Vider le champ pour tout afficher.",
+        "current": {
+          "selected": false,
+          "text": "traefik|whoami|grafana|prometheus|loki|alloy|cadvisor|node.?exporter|sonarqube|trivy",
+          "value": "traefik|whoami|grafana|prometheus|loki|alloy|cadvisor|node.?exporter|sonarqube|trivy"
+        },
+        "options": []
+      },
+      {
         "name": "project",
         "label": "Projet",
         "type": "query",
@@ -117,10 +131,10 @@
           "uid": "prometheus"
         },
         "query": {
-          "query": "label_values(container_last_seen{project!=\"\"}, project)",
+          "query": "label_values(container_last_seen{project!=\"\", project!~\"$infra\"}, project)",
           "refId": "A"
         },
-        "definition": "label_values(container_last_seen{project!=\"\"}, project)",
+        "definition": "label_values(container_last_seen{project!=\"\", project!~\"$infra\"}, project)",
         "multi": true,
         "includeAll": true,
         "allValue": ".+",
@@ -212,7 +226,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "count(count by (project) (container_last_seen{project=~\"$project\", environment=~\"$env\", server=~\"$server\"}))",
+          "expr": "count(count by (project) (container_last_seen{project=~\"$project\", project!~\"$infra\", environment=~\"$env\", server=~\"$server\"}))",
           "legendFormat": "",
           "refId": "A",
           "range": true,
@@ -279,7 +293,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "count(container_last_seen{project=~\"$project\", environment=~\"$env\", server=~\"$server\"})",
+          "expr": "count(container_last_seen{project=~\"$project\", project!~\"$infra\", environment=~\"$env\", server=~\"$server\"})",
           "legendFormat": "",
           "refId": "A",
           "range": true,
@@ -346,7 +360,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "count(container_start_time_seconds{project=~\"$project\", environment=~\"$env\", server=~\"$server\"} > (time() - 3600)) or vector(0)",
+          "expr": "count(container_start_time_seconds{project=~\"$project\", project!~\"$infra\", environment=~\"$env\", server=~\"$server\"} > (time() - 3600)) or vector(0)",
           "legendFormat": "",
           "refId": "A",
           "range": true,
@@ -420,7 +434,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(sum by (project) (label_replace(rate(traefik_router_requests_total{environment=~\"$env\", server=~\"$server\"}[$__rate_interval]), \"project\", \"$1\", \"router\", \"(.*)-[^-]+@.*\")) and on(project) (count by (project) (container_last_seen{project=~\"$project\", environment=~\"$env\", server=~\"$server\"}))) or vector(0)",
+          "expr": "sum(sum by (project) (label_replace(rate(traefik_router_requests_total{environment=~\"$env\", server=~\"$server\"}[$__rate_interval]), \"project\", \"$1\", \"router\", \"(.*)-[^-]+@.*\")) and on(project) (count by (project) (container_last_seen{project=~\"$project\", project!~\"$infra\", environment=~\"$env\", server=~\"$server\"}))) or vector(0)",
           "legendFormat": "",
           "refId": "A",
           "range": true,
@@ -485,7 +499,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(sum by (project) (label_replace(increase(traefik_router_requests_total{code=~\"5..\", environment=~\"$env\", server=~\"$server\"}[5m]), \"project\", \"$1\", \"router\", \"(.*)-[^-]+@.*\")) and on(project) (count by (project) (container_last_seen{project=~\"$project\", environment=~\"$env\", server=~\"$server\"}))) or vector(0)",
+          "expr": "sum(sum by (project) (label_replace(increase(traefik_router_requests_total{code=~\"5..\", environment=~\"$env\", server=~\"$server\"}[5m]), \"project\", \"$1\", \"router\", \"(.*)-[^-]+@.*\")) and on(project) (count by (project) (container_last_seen{project=~\"$project\", project!~\"$infra\", environment=~\"$env\", server=~\"$server\"}))) or vector(0)",
           "legendFormat": "",
           "refId": "A",
           "range": true,
@@ -556,7 +570,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "sum(rate({environment=~\"$env\", server=~\"$server\", project=~\"$project\"} |~ \"(?i)(error|fatal|panic|exception|critical)\" [1m])) * 60",
+          "expr": "sum(rate({environment=~\"$env\", server=~\"$server\", project=~\"$project\", project!~\"$infra\"} |~ \"(?i)(error|fatal|panic|exception|critical)\" [1m])) * 60",
           "legendFormat": "",
           "refId": "A",
           "range": true,
@@ -828,7 +842,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "count by (project) (container_last_seen{project=~\"$project\", environment=~\"$env\", server=~\"$server\"})",
+          "expr": "count by (project) (container_last_seen{project=~\"$project\", project!~\"$infra\", environment=~\"$env\", server=~\"$server\"})",
           "legendFormat": "",
           "refId": "A",
           "range": false,
@@ -840,7 +854,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (project) (rate(container_cpu_usage_seconds_total{project=~\"$project\", environment=~\"$env\", server=~\"$server\"}[$__rate_interval])) * 100",
+          "expr": "sum by (project) (rate(container_cpu_usage_seconds_total{project=~\"$project\", project!~\"$infra\", environment=~\"$env\", server=~\"$server\"}[$__rate_interval])) * 100",
           "legendFormat": "",
           "refId": "B",
           "range": false,
@@ -852,7 +866,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (project) (container_memory_working_set_bytes{project=~\"$project\", environment=~\"$env\", server=~\"$server\"})",
+          "expr": "sum by (project) (container_memory_working_set_bytes{project=~\"$project\", project!~\"$infra\", environment=~\"$env\", server=~\"$server\"})",
           "legendFormat": "",
           "refId": "C",
           "range": false,
@@ -864,7 +878,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (project) (rate(container_network_receive_bytes_total{project=~\"$project\", environment=~\"$env\", server=~\"$server\"}[$__rate_interval]) + rate(container_network_transmit_bytes_total{project=~\"$project\", environment=~\"$env\", server=~\"$server\"}[$__rate_interval]))",
+          "expr": "sum by (project) (rate(container_network_receive_bytes_total{project=~\"$project\", project!~\"$infra\", environment=~\"$env\", server=~\"$server\"}[$__rate_interval]) + rate(container_network_transmit_bytes_total{project=~\"$project\", project!~\"$infra\", environment=~\"$env\", server=~\"$server\"}[$__rate_interval]))",
           "legendFormat": "",
           "refId": "D",
           "range": false,
@@ -876,7 +890,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "count by (project) (container_start_time_seconds{project=~\"$project\", environment=~\"$env\", server=~\"$server\"} > (time() - 3600))",
+          "expr": "count by (project) (container_start_time_seconds{project=~\"$project\", project!~\"$infra\", environment=~\"$env\", server=~\"$server\"} > (time() - 3600))",
           "legendFormat": "",
           "refId": "E",
           "range": false,
@@ -888,7 +902,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "time() - min by (project) (container_start_time_seconds{project=~\"$project\", environment=~\"$env\", server=~\"$server\"})",
+          "expr": "time() - min by (project) (container_start_time_seconds{project=~\"$project\", project!~\"$infra\", environment=~\"$env\", server=~\"$server\"})",
           "legendFormat": "",
           "refId": "F",
           "range": false,
@@ -1236,7 +1250,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (project) (rate(container_cpu_usage_seconds_total{project=~\"$project\", environment=~\"$env\", server=~\"$server\"}[$__rate_interval])) * 100",
+          "expr": "sum by (project) (rate(container_cpu_usage_seconds_total{project=~\"$project\", project!~\"$infra\", environment=~\"$env\", server=~\"$server\"}[$__rate_interval])) * 100",
           "legendFormat": "{{project}}",
           "refId": "A",
           "range": true
@@ -1328,7 +1342,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (project) (container_memory_working_set_bytes{project=~\"$project\", environment=~\"$env\", server=~\"$server\"})",
+          "expr": "sum by (project) (container_memory_working_set_bytes{project=~\"$project\", project!~\"$infra\", environment=~\"$env\", server=~\"$server\"})",
           "legendFormat": "{{project}}",
           "refId": "A",
           "range": true
@@ -1420,7 +1434,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "sum by (project) (count_over_time({environment=~\"$env\", server=~\"$server\", project=~\"$project\"} |~ \"(?i)(error|fatal|panic|exception|critical)\" [$__range]))",
+          "expr": "sum by (project) (count_over_time({environment=~\"$env\", server=~\"$server\", project=~\"$project\", project!~\"$infra\"} |~ \"(?i)(error|fatal|panic|exception|critical)\" [$__range]))",
           "legendFormat": "{{project}}",
           "refId": "A",
           "range": false,
@@ -1522,7 +1536,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (project) (label_replace(rate(traefik_router_requests_total{environment=~\"$env\", server=~\"$server\"}[$__rate_interval]), \"project\", \"$1\", \"router\", \"(.*)-[^-]+@.*\")) and on(project) (count by (project) (container_last_seen{project=~\"$project\", environment=~\"$env\", server=~\"$server\"}))",
+          "expr": "sum by (project) (label_replace(rate(traefik_router_requests_total{environment=~\"$env\", server=~\"$server\"}[$__rate_interval]), \"project\", \"$1\", \"router\", \"(.*)-[^-]+@.*\")) and on(project) (count by (project) (container_last_seen{project=~\"$project\", project!~\"$infra\", environment=~\"$env\", server=~\"$server\"}))",
           "legendFormat": "{{project}}",
           "refId": "A",
           "range": true
@@ -1614,7 +1628,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (project) (label_replace(rate(traefik_router_requests_total{code=~\"5..\", environment=~\"$env\", server=~\"$server\"}[$__rate_interval]), \"project\", \"$1\", \"router\", \"(.*)-[^-]+@.*\")) and on(project) (count by (project) (container_last_seen{project=~\"$project\", environment=~\"$env\", server=~\"$server\"}))",
+          "expr": "sum by (project) (label_replace(rate(traefik_router_requests_total{code=~\"5..\", environment=~\"$env\", server=~\"$server\"}[$__rate_interval]), \"project\", \"$1\", \"router\", \"(.*)-[^-]+@.*\")) and on(project) (count by (project) (container_last_seen{project=~\"$project\", project!~\"$infra\", environment=~\"$env\", server=~\"$server\"}))",
           "legendFormat": "{{project}}",
           "refId": "A",
           "range": true
