@@ -1,0 +1,54 @@
+# =====================================================================
+# Projet de DÉMONSTRATION — sert à valider les dashboards « Projets » et
+# « Projet — détail » de Grafana sur un serveur sans application.
+#
+# Il illustre les deux moitiés de la convention :
+#   1. le label `project=demo` sur CHAQUE service  -> regroupement
+#   2. des routers Traefik nommés `demo-<service>` -> trafic HTTP par projet
+#
+# Déploiement et suppression : voir README.md (même dossier).
+# =====================================================================
+name: demo
+
+services:
+  api:
+    image: traefik/whoami:v1.10.1
+    container_name: demo-api
+    restart: unless-stopped
+    networks:
+      - proxy
+    expose:
+      - "80"
+    labels:
+      - "project=demo"
+      - "traefik.enable=true"
+      - "traefik.http.routers.demo-api.rule=Host(`demo.${INFRA_DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.demo-api.entrypoints=websecure"
+      - "traefik.http.routers.demo-api.tls=true"
+      - "traefik.http.routers.demo-api.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.demo-api.tls.domains[0].main=*.${INFRA_DOMAIN}"
+      - "traefik.http.routers.demo-api.tls.domains[0].sans=${INFRA_DOMAIN}"
+      - "traefik.http.services.demo-api.loadbalancer.server.port=80"
+
+  web:
+    image: traefik/whoami:v1.10.1
+    container_name: demo-web
+    restart: unless-stopped
+    networks:
+      - proxy
+    expose:
+      - "80"
+    labels:
+      - "project=demo"
+      - "traefik.enable=true"
+      - "traefik.http.routers.demo-web.rule=Host(`demo.${INFRA_DOMAIN}`) && !PathPrefix(`/api`)"
+      - "traefik.http.routers.demo-web.entrypoints=websecure"
+      - "traefik.http.routers.demo-web.tls=true"
+      - "traefik.http.routers.demo-web.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.demo-web.tls.domains[0].main=*.${INFRA_DOMAIN}"
+      - "traefik.http.routers.demo-web.tls.domains[0].sans=${INFRA_DOMAIN}"
+      - "traefik.http.services.demo-web.loadbalancer.server.port=80"
+
+networks:
+  proxy:
+    external: true
