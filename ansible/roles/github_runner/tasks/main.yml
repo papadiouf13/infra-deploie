@@ -13,7 +13,7 @@
       runner_repo est obligatoire, au format owner/depot.
       Exemple : make app-runner ENV=dev REPO=papadiouf13/todo_back TOKEN=...
 
-- name: Runner - nom du runner et chemins dérivés
+- name: Runner - nom du runner
   ansible.builtin.set_fact:
     runner_name: "{{ runner_name | default(server_name | default(ansible_hostname)
                      ~ '-' ~ (runner_repo | regex_replace('.*/', '') | replace('_', '-'))) }}"
@@ -45,23 +45,25 @@
     groups: "{{ runner_group }}"
     append: true
 
-# setgid (2) : tout ce que le runner crée dans /opt/apps reste au groupe
-# partagé, donc reste lisible et modifiable par le compte de déploiement.
-- name: Runner - droits partagés sur /opt/apps et /opt/deploy
+# Seul /opt/apps a besoin d'être écrit par le runner (il y dépose le
+# docker-compose.yml et le .env de chaque application). /opt/deploy reste
+# en lecture seule pour lui : il n'a qu'à EXÉCUTER deploy.sh, pas à le
+# modifier — inutile de lui ouvrir l'écriture sur les scripts privilégiés.
+# setgid (2) : ce que le runner crée dans /opt/apps reste au groupe partagé,
+# donc modifiable par le compte de déploiement.
+- name: Runner - droits partagés sur la racine des applications
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: "{{ runner_app_root }}"
     state: directory
     group: "{{ runner_group }}"
     mode: "2775"
-  loop:
-    - "{{ runner_app_root }}"
-    - "{{ runner_deploy_dir }}"
 
 # ------------------- Binaire du runner -------------------
-- name: Runner - archive officielle
+- name: Runner - archive officielle (empreinte vérifiée)
   ansible.builtin.get_url:
     url: "https://github.com/actions/runner/releases/download/v{{ runner_version }}/actions-runner-linux-x64-{{ runner_version }}.tar.gz"
     dest: "/tmp/actions-runner-{{ runner_version }}.tar.gz"
+    checksum: "sha256:{{ runner_sha256 }}"
     mode: "0644"
 
 - name: Runner - répertoire dédié au dépôt
@@ -81,17 +83,21 @@
     group: "{{ runner_group }}"
     creates: "{{ runner_dir }}/config.sh"
 
-- name: Runner - dépendances système du runner
-  ansible.builtin.command:
-    cmd: "./bin/installdependencies.sh"
-    chdir: "{{ runner_dir }}"
-  changed_when: false
-
 # ------------------- Enregistrement auprès de GitHub -------------------
 - name: Runner - déjà enregistré ?
   ansible.builtin.stat:
     path: "{{ runner_dir }}/.runner"
   register: runner_registered
+
+# Volontairement conditionné : ce script fait un apt-get et échouerait sur
+# un serveur sans accès réseau, alors qu'un runner déjà installé n'en a
+# aucun besoin. Il ne tourne donc qu'au premier passage.
+- name: Runner - dépendances système du runner (premier passage seulement)
+  ansible.builtin.command:
+    cmd: "./bin/installdependencies.sh"
+    chdir: "{{ runner_dir }}"
+  when: not runner_registered.stat.exists
+  changed_when: true
 
 - name: Runner - un token d'enregistrement est nécessaire
   ansible.builtin.assert:
@@ -104,18 +110,20 @@
       TOKEN=<le token>.
   when: not runner_registered.stat.exists
 
+# `runuser` plutôt que become_user : devenir un utilisateur NON privilégié
+# depuis root oblige Ansible à passer par des fichiers temporaires et
+# échoue sans ACL sur beaucoup de systèmes. runuser évite complètement
+# cette plomberie.
 - name: Runner - enregistrement auprès du dépôt
   ansible.builtin.command:
     cmd: >-
-      ./config.sh --unattended --replace
+      runuser -u {{ runner_user }} -- ./config.sh --unattended --replace
       --url https://github.com/{{ runner_repo }}
       --token {{ runner_token }}
       --name {{ runner_name }}
       --work _work
       {% if runner_labels | length > 0 %}--labels {{ runner_labels | join(',') }}{% endif %}
     chdir: "{{ runner_dir }}"
-  become: true
-  become_user: "{{ runner_user }}"
   when: not runner_registered.stat.exists
   no_log: true
 
@@ -141,8 +149,9 @@
 - name: Runner - récapitulatif
   ansible.builtin.debug:
     msg:
-      - "Dépôt    : {{ runner_repo }}"
-      - "Runner   : {{ runner_name }}"
-      - "Service  : {{ (runner_service_file.content | b64decode) | trim }}"
+      - "Dépôt      : {{ runner_repo }}"
+      - "Runner     : {{ runner_name }}"
+      - "Service    : {{ (runner_service_file.content | b64decode) | trim }}"
       - "Répertoire : {{ runner_dir }}"
-      - "Le job `deploy` du workflow doit cibler : runs-on: [self-hosted, linux, x64]"
+      - "Labels     : self-hosted, Linux, X64{{ ', ' ~ runner_labels | join(', ') if runner_labels | length > 0 else '' }}"
+      - "Le job `deploy` du workflow cible : runs-on: [self-hosted, linux, x64]"

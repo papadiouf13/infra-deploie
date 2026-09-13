@@ -110,17 +110,30 @@
       },
       {
         "name": "infra",
-        "label": "Masquer (regex)",
-        "type": "textbox",
-        "query": "traefik|whoami|grafana|prometheus|loki|alloy|cadvisor|node.?exporter|sonarqube|trivy",
+        "label": "Périmètre",
+        "type": "custom",
+        "query": "Applications seulement : traefik|whoami|grafana|prometheus|loki|alloy|cadvisor|node.?exporter|sonarqube|trivy,Tout (infra comprise) : __aucun__",
+        "multi": false,
+        "includeAll": false,
         "hide": 0,
-        "description": "Projets écartés de la vue (conteneurs d'infrastructure). Vider le champ pour tout afficher.",
+        "skipUrlSync": false,
         "current": {
-          "selected": false,
-          "text": "traefik|whoami|grafana|prometheus|loki|alloy|cadvisor|node.?exporter|sonarqube|trivy",
+          "selected": true,
+          "text": "Applications seulement",
           "value": "traefik|whoami|grafana|prometheus|loki|alloy|cadvisor|node.?exporter|sonarqube|trivy"
         },
-        "options": []
+        "options": [
+          {
+            "selected": true,
+            "text": "Applications seulement",
+            "value": "traefik|whoami|grafana|prometheus|loki|alloy|cadvisor|node.?exporter|sonarqube|trivy"
+          },
+          {
+            "selected": false,
+            "text": "Tout (infra comprise)",
+            "value": "__aucun__"
+          }
+        ]
       },
       {
         "name": "project",
@@ -342,7 +355,7 @@
     {
       "id": 5,
       "type": "stat",
-      "title": "Redémarrages (1 h)",
+      "title": "Démarrés (< 1 h)",
       "description": "",
       "gridPos": {
         "x": 8,
@@ -985,13 +998,18 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 110
+                "value": 100
               },
               {
                 "id": "custom.cellOptions",
                 "value": {
-                  "type": "color-background",
-                  "mode": "basic"
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
                 }
               },
               {
@@ -1106,12 +1124,12 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Redémarrages (1 h)"
+              "options": "Démarrés (< 1 h)"
             },
             "properties": [
               {
                 "id": "custom.width",
-                "value": 160
+                "value": 150
               },
               {
                 "id": "custom.cellOptions",
@@ -1209,7 +1227,7 @@
               "Value #B": "CPU %",
               "Value #C": "Mémoire",
               "Value #D": "Réseau",
-              "Value #E": "Redémarrages (1 h)",
+              "Value #E": "Démarrés (< 1 h)",
               "Value #F": "Ancienneté"
             }
           }

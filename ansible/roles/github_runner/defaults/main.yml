@@ -21,6 +21,12 @@
 # à jour tout seul.
 runner_version: "2.337.0"
 
+# Empreinte SHA-256 de l'archive linux-x64 de CETTE version. À changer en
+# même temps que runner_version (l'empreinte est publiée sur la page de la
+# release). Une empreinte qui ne correspond pas fait échouer le
+# téléchargement : c'est voulu.
+runner_sha256: "70920811a4f8ad4328818682bca5c6469c1c942fab52448868071d0063816613"
+
 # Compte système dédié aux runners (jamais un compte humain).
 runner_user: "gh-runner"
 

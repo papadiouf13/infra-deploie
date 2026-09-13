@@ -177,7 +177,7 @@
         "definition": "label_values(traefik_router_requests_total, router)",
         "multi": true,
         "includeAll": true,
-        "allValue": "$project-.*",
+        "allValue": ".+",
         "current": {
           "selected": true,
           "text": [
@@ -553,7 +553,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(traefik_router_requests_total{router=~\"$router\", environment=~\"$env\", server=~\"$server\"}[$__rate_interval])) or vector(0)",
+          "expr": "sum(rate(traefik_router_requests_total{router=~\"$router\", router=~\"$project-.*\", environment=~\"$env\", server=~\"$server\"}[$__rate_interval])) or vector(0)",
           "legendFormat": "",
           "refId": "A",
           "range": true,
@@ -618,7 +618,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(1 - (sum(rate(traefik_router_requests_total{code=~\"5..\", router=~\"$router\", environment=~\"$env\", server=~\"$server\"}[5m])) or vector(0)) / clamp_min(sum(rate(traefik_router_requests_total{router=~\"$router\", environment=~\"$env\", server=~\"$server\"}[5m])), 1e-9)) * 100",
+          "expr": "(1 - (sum(rate(traefik_router_requests_total{code=~\"5..\", router=~\"$router\", router=~\"$project-.*\", environment=~\"$env\", server=~\"$server\"}[5m])) or vector(0)) / clamp_min(sum(rate(traefik_router_requests_total{router=~\"$router\", router=~\"$project-.*\", environment=~\"$env\", server=~\"$server\"}[5m])), 1e-9)) * 100",
           "legendFormat": "",
           "refId": "A",
           "range": true,
@@ -690,7 +690,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(traefik_service_request_duration_seconds_bucket{service=~\"$router\", environment=~\"$env\", server=~\"$server\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(traefik_service_request_duration_seconds_bucket{service=~\"$router\", service=~\"$project-.*\", environment=~\"$env\", server=~\"$server\"}[$__rate_interval])))",
           "legendFormat": "",
           "refId": "A",
           "range": true,
@@ -1475,7 +1475,7 @@
       "id": 38,
       "type": "timeseries",
       "title": "Requêtes par router (req/s)",
-      "description": "La variable « Router » vaut par défaut « $project-* » : elle suit la convention de nommage des routers Traefik. Sélectionne-les à la main si tes routers sont nommés autrement.",
+      "description": "Les panneaux HTTP ne retiennent que les routers nommés « $project-... » (convention de nommage Traefik). La liste « Router » sert à restreindre davantage, par exemple à un seul service du projet.",
       "gridPos": {
         "x": 0,
         "y": 26,
@@ -1492,7 +1492,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (router) (rate(traefik_router_requests_total{router=~\"$router\", environment=~\"$env\", server=~\"$server\"}[$__rate_interval]))",
+          "expr": "sum by (router) (rate(traefik_router_requests_total{router=~\"$router\", router=~\"$project-.*\", environment=~\"$env\", server=~\"$server\"}[$__rate_interval]))",
           "legendFormat": "{{router}}",
           "refId": "A",
           "range": true
@@ -1584,7 +1584,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (code) (rate(traefik_router_requests_total{router=~\"$router\", environment=~\"$env\", server=~\"$server\"}[$__rate_interval]))",
+          "expr": "sum by (code) (rate(traefik_router_requests_total{router=~\"$router\", router=~\"$project-.*\", environment=~\"$env\", server=~\"$server\"}[$__rate_interval]))",
           "legendFormat": "HTTP {{code}}",
           "refId": "A",
           "range": true
@@ -1737,7 +1737,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.50, sum by (le) (rate(traefik_service_request_duration_seconds_bucket{service=~\"$router\", environment=~\"$env\", server=~\"$server\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(traefik_service_request_duration_seconds_bucket{service=~\"$router\", service=~\"$project-.*\", environment=~\"$env\", server=~\"$server\"}[$__rate_interval])))",
           "legendFormat": "p50",
           "refId": "A",
           "range": true
@@ -1747,7 +1747,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(traefik_service_request_duration_seconds_bucket{service=~\"$router\", environment=~\"$env\", server=~\"$server\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(traefik_service_request_duration_seconds_bucket{service=~\"$router\", service=~\"$project-.*\", environment=~\"$env\", server=~\"$server\"}[$__rate_interval])))",
           "legendFormat": "p95",
           "refId": "B",
           "range": true
@@ -1757,7 +1757,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(traefik_service_request_duration_seconds_bucket{service=~\"$router\", environment=~\"$env\", server=~\"$server\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(traefik_service_request_duration_seconds_bucket{service=~\"$router\", service=~\"$project-.*\", environment=~\"$env\", server=~\"$server\"}[$__rate_interval])))",
           "legendFormat": "p99",
           "refId": "C",
           "range": true
@@ -1895,7 +1895,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (code) (increase(traefik_router_requests_total{router=~\"$router\", environment=~\"$env\", server=~\"$server\"}[$__range]))",
+          "expr": "sum by (code) (increase(traefik_router_requests_total{router=~\"$router\", router=~\"$project-.*\", environment=~\"$env\", server=~\"$server\"}[$__range]))",
           "legendFormat": "HTTP {{code}}",
           "refId": "A",
           "range": false,
@@ -2027,7 +2027,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{filename=\"/logs/traefik/access.log\", environment=~\"$env\", server=~\"$server\"} | json | RouterName =~ \"$router\" | DownstreamStatus >= 400 | line_format \"{{.DownstreamStatus}} {{.RequestMethod}} {{.RequestHost}}{{.RequestPath}} ← {{.ClientHost}}\"",
+          "expr": "{filename=\"/logs/traefik/access.log\", environment=~\"$env\", server=~\"$server\"} | json | RouterName =~ \"$router\" | RouterName =~ \"$project-.*\" | DownstreamStatus >= 400 | line_format \"{{.DownstreamStatus}} {{.RequestMethod}} {{.RequestHost}}{{.RequestPath}} ← {{.ClientHost}}\"",
           "legendFormat": "",
           "refId": "A",
           "range": true
