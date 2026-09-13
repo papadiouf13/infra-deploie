@@ -9,6 +9,7 @@
 #   make configure  ENV=dev|prod    Ansible site.yml (Docker, Traefik, monitoring)
 #   make deploy     ENV=dev|prod    = apply + inventory + configure
 #   make app-socle  ENV=dev|prod    Socle CI/CD des apps (1x par serveur)
+#   make app-runner ENV=dev REPO=owner/depot TOKEN=...   Runner self-hosted (1x par depot)
 #   make verify     ENV=dev|prod    Ansible verify.yml (contrôles post-déploiement)
 #   make destroy    ENV=dev|prod    Terraform destroy (avec confirmation)
 #   make ssh        ENV=dev|prod    Connexion SSH au serveur
@@ -37,7 +38,7 @@ INV_TPL     := $(ANSIBLE_DIR)/inventories/$(ENV)/hosts.ini
 PLAYBOOK    := $(ANSIBLE_DIR)/playbooks/site.yml
 VERIFY      := $(ANSIBLE_DIR)/playbooks/verify.yml
 
-.PHONY: help preflight plan apply inventory configure app-socle deploy verify destroy ssh urls
+.PHONY: help preflight plan apply inventory configure app-socle app-runner deploy verify destroy ssh urls
 
 help:
 	@echo "Cibles disponibles (ENV=dev|prod) :"
@@ -48,6 +49,7 @@ help:
 	@echo "  configure  - ansible-playbook site.yml"
 	@echo "  deploy     - apply + inventory + configure"
 	@echo "  app-socle  - ansible-playbook app-deploy.yml (socle CI/CD des apps, 1x par serveur)"
+	@echo "  app-runner - installe un runner GitHub self-hosted (REPO=owner/depot TOKEN=...)"
 	@echo "  verify     - ansible-playbook verify.yml"
 	@echo "  destroy    - terraform destroy (confirmation demandée)"
 	@echo "  ssh        - connexion SSH"
@@ -85,6 +87,15 @@ configure:
 # après `configure`. Les déploiements applicatifs passent ensuite par le CI/CD.
 app-socle:
 	cd $(ANSIBLE_DIR) && ansible-playbook -i inventories/$(ENV)/hosts.ini playbooks/app-deploy.yml $(VAULT_ARGS)
+
+# Runner GitHub Actions self-hosted, un par depot. Le serveur n'etant pas
+# joignable depuis Internet, c'est lui qui va chercher les jobs chez GitHub.
+# TOKEN s'obtient sur GitHub : depot > Settings > Actions > Runners >
+# New self-hosted runner (valable ~1 h). Inutile si le runner existe deja.
+app-runner:
+	@[ -n "$(REPO)" ] || { echo "Usage: make app-runner ENV=dev REPO=owner/depot [TOKEN=...] [NAME=...]"; exit 1; }
+	cd $(ANSIBLE_DIR) && ansible-playbook -i inventories/$(ENV)/hosts.ini playbooks/github-runner.yml \
+		-e runner_repo=$(REPO) $(if $(TOKEN),-e runner_token=$(TOKEN),) $(if $(NAME),-e runner_name=$(NAME),) $(VAULT_ARGS)
 
 deploy: apply inventory configure
 

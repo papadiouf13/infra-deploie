@@ -1,0 +1,55 @@
+---
+# =====================================================================
+# GITHUB_RUNNER — runner GitHub Actions self-hosted, un par dépôt.
+#
+# Pourquoi self-hosted : le serveur n'est pas joignable depuis Internet
+# (NAT, LAN, pas de port-forward). C'est donc le serveur qui va chercher
+# les jobs chez GitHub, et non GitHub qui se connecte au serveur.
+#
+# Usage (le token s'obtient sur GitHub : Settings > Actions > Runners >
+# New self-hosted runner ; il est valable ~1 h) :
+#
+#   make app-runner ENV=dev REPO=papadiouf13/todo_back TOKEN=AXXXXXXXX \
+#        VAULT_ARGS='--vault-password-file ../.vault-pass'
+#
+# Rejouer la commande sans TOKEN est sans effet si le runner est déjà
+# enregistré (le rôle est idempotent).
+# =====================================================================
+
+# Version du runner. À vérifier sur
+# https://github.com/actions/runner/releases — le runner se met ensuite
+# à jour tout seul.
+runner_version: "2.337.0"
+
+# Compte système dédié aux runners (jamais un compte humain).
+runner_user: "gh-runner"
+
+# Racine commune ; chaque dépôt a son sous-répertoire.
+runner_root: "/opt/actions-runner"
+
+# Groupe partagé entre le runner et le compte de déploiement, qui donne
+# au runner le droit d'écrire dans /opt/apps et d'exécuter deploy.sh.
+runner_group: "deployers"
+
+# Doivent correspondre aux valeurs du rôle app_deploy.
+runner_app_root: "/opt/apps"
+runner_deploy_dir: "/opt/deploy"
+
+# Labels supplémentaires. `self-hosted`, `Linux` et `X64` sont posés
+# automatiquement par GitHub : inutile de les répéter.
+#
+# Par défaut on ajoute le NOM DU SERVEUR. Un runner est enregistré sur le
+# DÉPÔT et non sur la machine : deux serveurs installés sur le même dépôt s'y
+# retrouvent côte à côte, et GitHub envoie le job au premier disponible — un
+# push pourrait donc déployer sur l'ancienne machine sans la moindre erreur.
+# Ce label les distingue dans l'interface GitHub et permet, au besoin, de
+# cibler explicitement le bon serveur :
+#     runs-on: [self-hosted, linux, x64, tioukh]
+runner_labels:
+  - "{{ server_name | default(ansible_hostname) }}"
+
+# Dépôt visé, au format owner/depot. Fourni en ligne de commande.
+runner_repo: ""
+
+# Token d'enregistrement GitHub. Requis uniquement au premier passage.
+runner_token: ""

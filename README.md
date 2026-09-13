@@ -95,6 +95,7 @@ make verify    ENV=dev
 | `configure` | `ansible-playbook playbooks/site.yml` |
 | `deploy` | `apply` + `inventory` + `configure` |
 | `app-socle` | Socle CI/CD des applications (`app-deploy.yml`) — **une fois par serveur** |
+| `app-runner` | Runner GitHub self-hosted (`REPO=owner/depot TOKEN=...`) — **une fois par dépôt** |
 | `verify` | `ansible-playbook playbooks/verify.yml` (santé + exposition réseau) |
 | `destroy` | `terraform destroy` (confirmation) |
 | `ssh` / `urls` | Connexion / affichage des URLs de l'environnement |

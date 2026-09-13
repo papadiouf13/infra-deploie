@@ -131,20 +131,34 @@ Le playbook crée (détail dans `ansible/roles/app_deploy`) :
 
 ### 4.2 Runner self-hosted (par repository)
 
-Le runner est **installé manuellement** (pas encore via Ansible) :
+Le serveur va chercher ses jobs chez GitHub (il n'est pas joignable depuis
+Internet). Un runner par dépôt, posé par Ansible :
 
-1. GitHub repo → Settings → Actions → Runners → **New self-hosted runner**
-   (choisir linux/x64) → installer sur la VM.
-2. Démarrer comme **service systemd** : `./svc.sh install && ./svc.sh start`
-   (nom du service : `actions.runner.<owner>-<repo>.<name>.service`).
-3. Le compte runner (`gh-runner`) doit être dans les groupes **`docker`** et
-   **`deployers`** :
-   ```bash
-   sudo usermod -aG docker gh-runner
-   sudo usermod -aG deployers gh-runner
-   ```
-4. Le runner doit être labellisé **`self-hosted`, `linux`, `x64`** (labels
-   par défaut) : le job `deploy` y tourne.
+```bash
+make app-runner ENV=dev REPO=<owner>/<depot> TOKEN=<token> \
+     VAULT_ARGS='--vault-password-file ../.vault-pass'
+```
+
+1. Sur GitHub : dépôt > **Settings > Actions > Runners > New self-hosted
+   runner** (linux/x64). Copier le token affiché dans la commande
+   `./config.sh --token` — valable une heure.
+2. Lancer la commande ci-dessus. Le rôle crée le compte `gh-runner`, le
+   groupe `deployers`, les droits partagés sur `/opt/apps` et `/opt/deploy`,
+   enregistre le runner et l'installe en service systemd activé au boot.
+3. Le job `deploy` du workflow cible `runs-on: [self-hosted, linux, x64]`.
+
+> Rejouer la commande est sans effet si le runner est déjà enregistré ; le
+> `TOKEN` n'est alors pas nécessaire. Pour changer le nom du runner :
+> `NAME=mon-runner`.
+
+> ⚠️ **Migration de serveur.** Un runner est enregistré sur le *dépôt*,
+> pas sur la machine. Si tu installes les runners d'un nouveau serveur
+> sans retirer les anciens, le dépôt en aura deux et GitHub enverra le
+> job de déploiement au premier disponible — un push peut alors déployer
+> sur l'ancienne machine sans erreur visible. Retire l'ancien runner
+> (dépôt > Settings > Actions > Runners > Remove), ou cible le bon par
+> son label serveur : `runs-on: [self-hosted, linux, x64, <serveur>]`.
+> Chaque runner porte le nom de son serveur comme label.
 
 Vérification :
 

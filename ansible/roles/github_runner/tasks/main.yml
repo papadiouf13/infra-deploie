@@ -1,0 +1,148 @@
+---
+# =====================================================================
+# Installe et enregistre un runner GitHub Actions self-hosted pour UN
+# dépôt, sous la forme d'un service systemd.
+# =====================================================================
+
+- name: Runner - le dépôt doit être fourni
+  ansible.builtin.assert:
+    that:
+      - runner_repo | length > 0
+      - "'/' in runner_repo"
+    fail_msg: >-
+      runner_repo est obligatoire, au format owner/depot.
+      Exemple : make app-runner ENV=dev REPO=papadiouf13/todo_back TOKEN=...
+
+- name: Runner - nom du runner et chemins dérivés
+  ansible.builtin.set_fact:
+    runner_name: "{{ runner_name | default(server_name | default(ansible_hostname)
+                     ~ '-' ~ (runner_repo | regex_replace('.*/', '') | replace('_', '-'))) }}"
+  # Exemple : dépôt papadiouf13/todo_back sur tioukh -> tioukh-todo-back
+
+- name: Runner - répertoire de ce runner
+  ansible.builtin.set_fact:
+    runner_dir: "{{ runner_root }}/{{ runner_name }}"
+
+# ------------------- Comptes et droits partagés -------------------
+- name: Runner - groupe partagé avec le compte de déploiement
+  ansible.builtin.group:
+    name: "{{ runner_group }}"
+    state: present
+
+- name: Runner - compte système dédié
+  ansible.builtin.user:
+    name: "{{ runner_user }}"
+    system: true
+    shell: /bin/bash
+    home: "{{ runner_root }}"
+    create_home: true
+    groups: "docker,{{ runner_group }}"
+    append: true
+
+- name: Runner - le compte de déploiement rejoint le groupe partagé
+  ansible.builtin.user:
+    name: "{{ app_deploy_user | default(ansible_user) }}"
+    groups: "{{ runner_group }}"
+    append: true
+
+# setgid (2) : tout ce que le runner crée dans /opt/apps reste au groupe
+# partagé, donc reste lisible et modifiable par le compte de déploiement.
+- name: Runner - droits partagés sur /opt/apps et /opt/deploy
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    group: "{{ runner_group }}"
+    mode: "2775"
+  loop:
+    - "{{ runner_app_root }}"
+    - "{{ runner_deploy_dir }}"
+
+# ------------------- Binaire du runner -------------------
+- name: Runner - archive officielle
+  ansible.builtin.get_url:
+    url: "https://github.com/actions/runner/releases/download/v{{ runner_version }}/actions-runner-linux-x64-{{ runner_version }}.tar.gz"
+    dest: "/tmp/actions-runner-{{ runner_version }}.tar.gz"
+    mode: "0644"
+
+- name: Runner - répertoire dédié au dépôt
+  ansible.builtin.file:
+    path: "{{ runner_dir }}"
+    state: directory
+    owner: "{{ runner_user }}"
+    group: "{{ runner_group }}"
+    mode: "0750"
+
+- name: Runner - extraction
+  ansible.builtin.unarchive:
+    src: "/tmp/actions-runner-{{ runner_version }}.tar.gz"
+    dest: "{{ runner_dir }}"
+    remote_src: true
+    owner: "{{ runner_user }}"
+    group: "{{ runner_group }}"
+    creates: "{{ runner_dir }}/config.sh"
+
+- name: Runner - dépendances système du runner
+  ansible.builtin.command:
+    cmd: "./bin/installdependencies.sh"
+    chdir: "{{ runner_dir }}"
+  changed_when: false
+
+# ------------------- Enregistrement auprès de GitHub -------------------
+- name: Runner - déjà enregistré ?
+  ansible.builtin.stat:
+    path: "{{ runner_dir }}/.runner"
+  register: runner_registered
+
+- name: Runner - un token d'enregistrement est nécessaire
+  ansible.builtin.assert:
+    that: runner_token | length > 0
+    fail_msg: >-
+      Ce runner n'est pas encore enregistré et aucun token n'a été fourni.
+      Sur GitHub : dépôt > Settings > Actions > Runners > New self-hosted
+      runner ; copier le token affiché dans la commande ./config.sh (il
+      commence par A et expire au bout d'une heure), puis relancer avec
+      TOKEN=<le token>.
+  when: not runner_registered.stat.exists
+
+- name: Runner - enregistrement auprès du dépôt
+  ansible.builtin.command:
+    cmd: >-
+      ./config.sh --unattended --replace
+      --url https://github.com/{{ runner_repo }}
+      --token {{ runner_token }}
+      --name {{ runner_name }}
+      --work _work
+      {% if runner_labels | length > 0 %}--labels {{ runner_labels | join(',') }}{% endif %}
+    chdir: "{{ runner_dir }}"
+  become: true
+  become_user: "{{ runner_user }}"
+  when: not runner_registered.stat.exists
+  no_log: true
+
+# ------------------- Service systemd -------------------
+- name: Runner - installer le service systemd
+  ansible.builtin.command:
+    cmd: "./svc.sh install {{ runner_user }}"
+    chdir: "{{ runner_dir }}"
+    creates: "{{ runner_dir }}/.service"
+
+- name: Runner - relire le nom du service
+  ansible.builtin.slurp:
+    src: "{{ runner_dir }}/.service"
+  register: runner_service_file
+
+- name: Runner - démarrer et activer au boot
+  ansible.builtin.systemd:
+    name: "{{ (runner_service_file.content | b64decode) | trim }}"
+    state: started
+    enabled: true
+    daemon_reload: true
+
+- name: Runner - récapitulatif
+  ansible.builtin.debug:
+    msg:
+      - "Dépôt    : {{ runner_repo }}"
+      - "Runner   : {{ runner_name }}"
+      - "Service  : {{ (runner_service_file.content | b64decode) | trim }}"
+      - "Répertoire : {{ runner_dir }}"
+      - "Le job `deploy` du workflow doit cibler : runs-on: [self-hosted, linux, x64]"

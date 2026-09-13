@@ -13,7 +13,7 @@
 #
 # La clé PRIVÉE doit ensuite être copiée dans le secret GitHub
 # SSH_PRIVATE_KEY : à récupérer via :
-#   ssh papa@<host> 'cat /opt/deploy/.ssh/deploy_key'
+#   ssh <app_deploy_user>@<host> 'cat /opt/deploy/.ssh/deploy_key'
 #   2> /dev/null`" — voir les tâches ci-dessous.
 # =====================================================================
 
@@ -36,7 +36,7 @@
 # ------------------- Clé CI/CD dédiée -------------------
 - name: App deploy - générer la clé ed25519 CI/CD (si absente)
   ansible.builtin.command:
-    cmd: "ssh-keygen -t ed25519 -N '' -C 'papa-cicd-deploy' -f '{{ deploy_dir }}/.ssh/{{ deploy_key_name }}'"
+    cmd: "ssh-keygen -t ed25519 -N '' -C '{{ app_deploy_user }}-cicd-deploy@{{ server_name | default(ansible_hostname) }}' -f '{{ deploy_dir }}/.ssh/{{ deploy_key_name }}'"
     creates: "{{ deploy_dir }}/.ssh/{{ deploy_key_name }}"
 
 - name: App deploy - lire la clé publique

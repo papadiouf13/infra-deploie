@@ -91,22 +91,56 @@ Comportement observé (VM) :
   (5.8.4). Si un déploiement rate son démarrage (migration binaire cassée),
   voir 15.6 (rollback image précédente : `IMAGE_TAG=sha-<précédent>`).
 
-## 11.6 Runners self-hosted (VM) — état réel
+## 11.6 Runners self-hosted — installation automatisée
 
-| Runner | Repo | Service systemd |
-|---|---|---|
-| `vm-todo-back` | todo_back | `actions.runner.papadiouf13-todo_back.vm-todo-back.service` |
-| `vm-todo-front` | todo_front | `actions.runner.papadiouf13-todo_front.vm-todo-front.service` |
-| `vpstest-api` / `vpstest-front` | (app-learning-hub) | `actions.runner.*` |
+Le serveur n'est pas joignable depuis Internet (NAT, pas de port-forward) :
+c'est donc lui qui va chercher les jobs chez GitHub, via un **runner
+self-hosted par dépôt**. Ces runners étaient installés à la main ; ils sont
+désormais posés par le rôle Ansible `github_runner` :
 
-- Installés **manuellement** (pas via Ansible — cf. S4 / 8.5).
-- Compte `gh-runner` dans les groupes `docker` et `deployers` ; ignore la VM
-  de `pwd` (repose sur les répertoires).
+```bash
+make app-runner ENV=dev REPO=papadiouf13/todo_back TOKEN=A2XXXXXXXXXXXX \
+     VAULT_ARGS='--vault-password-file ../.vault-pass'
+```
+
+Le `TOKEN` s'obtient sur GitHub — dépôt > Settings > Actions > Runners >
+**New self-hosted runner** : c'est la valeur passée à `./config.sh --token`.
+Il expire au bout d'une heure et ne sert qu'au **premier** enregistrement ;
+rejouer la commande sans `TOKEN` ne fait rien si le runner existe déjà.
+
+Ce que le rôle met en place :
+
+| Élément | Détail |
+|---|---|
+| Compte | `gh-runner` (système), membre de `docker` et `deployers` |
+| Groupe partagé | `deployers`, qui contient aussi `app_deploy_user` |
+| Droits | `/opt/apps` et `/opt/deploy` en `2775` groupe `deployers` (setgid : ce que le runner crée reste modifiable par le compte de déploiement) |
+| Emplacement | `/opt/actions-runner/<serveur>-<depot>/` |
+| Nom du runner | `<serveur>-<depot>`, ex. `tioukh-todo-back` (surchargeable par `NAME=`) |
+| Service | `actions.runner.<owner>-<depot>.<nom>.service`, activé au boot |
+
+Le job `deploy` du workflow cible ces runners par `runs-on: [self-hosted,
+linux, x64]` — labels posés automatiquement par GitHub.
+
+> ⚠️ **Migration de serveur.** Un runner est enregistré sur le *dépôt*,
+> pas sur la machine. Si tu installes les runners d'un nouveau serveur
+> sans retirer les anciens, le dépôt en aura deux et GitHub enverra le
+> job de déploiement au premier disponible — un push peut alors déployer
+> sur l'ancienne machine sans erreur visible. Retire l'ancien runner
+> (dépôt > Settings > Actions > Runners > Remove), ou cible le bon par
+> son label serveur : `runs-on: [self-hosted, linux, x64, <serveur>]`.
+> Chaque runner porte le nom de son serveur comme label.
+
+Vérification :
+
+```bash
+systemctl list-units 'actions.runner.*' --no-pager --all
+```
 
 ## 11.7 📌 Recommandations (apps / CI)
 - Passer `APP_HOST` en variable GitHub (S7) : le workflow doit lire
   `vars.APP_HOST` au lieu d'un hostname en dur (fallback `todo.192.168.1.15.nip.io`).
-- Rendre les runners **reproduisibles** (rôle `github_runner`, token → secrets repo).
+- ~~Rendre les runners reproduisibles~~ — fait : rôle `github_runner` + `make app-runner` (11.6).
 - Purger l'inutile : `SSH_PRIVATE_KEY` (repo secrets), `/opt/deploy/.ssh-archive`,
   anciens tags `develop` obsolètes.
 - **Priver les images** (S8).
