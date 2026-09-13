@@ -109,6 +109,20 @@
         "options": []
       },
       {
+        "name": "infra",
+        "label": "Masquer (regex)",
+        "type": "textbox",
+        "query": "traefik|whoami|grafana|prometheus|loki|alloy|cadvisor|node.?exporter|sonarqube|trivy",
+        "hide": 0,
+        "description": "Projets écartés de la vue (conteneurs d'infrastructure). Vider le champ pour tout afficher.",
+        "current": {
+          "selected": false,
+          "text": "traefik|whoami|grafana|prometheus|loki|alloy|cadvisor|node.?exporter|sonarqube|trivy",
+          "value": "traefik|whoami|grafana|prometheus|loki|alloy|cadvisor|node.?exporter|sonarqube|trivy"
+        },
+        "options": []
+      },
+      {
         "name": "project",
         "label": "Projet",
         "type": "query",
@@ -117,10 +131,10 @@
           "uid": "prometheus"
         },
         "query": {
-          "query": "label_values(container_last_seen{project!=\"\"}, project)",
+          "query": "label_values(container_last_seen{project!=\"\", project!~\"$infra\"}, project)",
           "refId": "A"
         },
-        "definition": "label_values(container_last_seen{project!=\"\"}, project)",
+        "definition": "label_values(container_last_seen{project!=\"\", project!~\"$infra\"}, project)",
         "multi": false,
         "includeAll": false,
         "allValue": null,
