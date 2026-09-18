@@ -52,7 +52,7 @@ runner_deploy_dir: "/opt/deploy"
 # cibler explicitement le bon serveur :
 #     runs-on: [self-hosted, linux, x64, tioukh]
 runner_labels:
-  - "{{ server_name | default(ansible_hostname) }}"
+  - "{{ server_name | default(ansible_facts['hostname']) }}"
 
 # Dépôt visé, au format owner/depot. Fourni en ligne de commande.
 runner_repo: ""

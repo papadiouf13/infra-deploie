@@ -15,7 +15,7 @@
 
 - name: Runner - nom du runner
   ansible.builtin.set_fact:
-    runner_name: "{{ runner_name | default(server_name | default(ansible_hostname)
+    runner_name: "{{ runner_name | default(server_name | default(ansible_facts['hostname'])
                      ~ '-' ~ (runner_repo | regex_replace('.*/', '') | replace('_', '-'))) }}"
   # Exemple : dépôt papadiouf13/todo_back sur tioukh -> tioukh-todo-back
 
