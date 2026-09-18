@@ -58,6 +58,16 @@
     group: "{{ runner_group }}"
     mode: "2775"
 
+# Le runner doit pouvoir EXÉCUTER deploy.sh sans pouvoir le modifier.
+# Cette tâche répare aussi les serveurs dont /opt/deploy avait hérité de
+# droits trop restrictifs (voir le rôle app_deploy). On ne touche ni au
+# propriétaire ni au groupe : .ssh et sa clé privée restent en 0700.
+- name: Runner - dossier des scripts de déploiement traversable
+  ansible.builtin.file:
+    path: "{{ runner_deploy_dir }}"
+    state: directory
+    mode: "0755"
+
 # ------------------- Binaire du runner -------------------
 - name: Runner - archive officielle (empreinte vérifiée)
   ansible.builtin.get_url:

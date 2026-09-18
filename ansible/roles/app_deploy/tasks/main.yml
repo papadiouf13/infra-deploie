@@ -25,6 +25,21 @@
     group: "{{ app_deploy_user }}"
     mode: "0755"
 
+# Créé explicitement AVANT /opt/deploy/.ssh : sinon il naît comme simple
+# parent implicite et hérite des droits restrictifs du .ssh (0700), ce qui
+# empêche le compte du runner CI/CD d'entrer dans le dossier — donc
+# d'exécuter deploy.sh (« Permission denied », code 126).
+# 0755 = tout le monde peut traverser et exécuter les scripts, personne
+# d'autre que le propriétaire ne peut les modifier. La clé privée reste
+# protégée par le 0700 du sous-dossier .ssh.
+- name: App deploy - répertoire des scripts de déploiement
+  ansible.builtin.file:
+    path: "{{ deploy_dir }}"
+    state: directory
+    owner: "{{ app_deploy_user }}"
+    group: "{{ app_deploy_user }}"
+    mode: "0755"
+
 - name: App deploy - répertoire /opt/deploy/.ssh
   ansible.builtin.file:
     path: "{{ deploy_dir }}/.ssh"
